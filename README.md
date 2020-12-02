@@ -1,4 +1,4 @@
-# Study to retrieve Ice Water Path
+# Interpolate ERA5 to DARDAR grid
 
 This repository contains code and documentation for interpolating ERA5 data to DARDAR grid.
 Preparing the data required to run ARTS simulations.
