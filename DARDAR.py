@@ -60,7 +60,7 @@ class DARDARProduct():
         return data
     
    
-    def filename_to_date(self):
+    def filename2date(self):
         """
         extracts time stamp from dardar filename
 
