@@ -19,6 +19,10 @@ from pansat.products.reanalysis.era5 import ERA5Product
 import xarray
 from alt2pressure import pres2alt
 from scipy.constants import g
+import numpy as np
+from alt2pressure import alt2pres
+from interpolator import interpolator
+
 
 class ERA5():
     """
@@ -47,8 +51,9 @@ class ERA5():
         
         self.longname  = parameter
         self.shortname = parameters[parameter]       
+        
 
-
+        
 class ERA5p(ERA5):
     """
     class to download and load ERA5 surface variables
@@ -112,7 +117,94 @@ class ERA5p(ERA5):
              A          = self.era[self.shortname][:, -1, :, :].to_dataset() # copy lowest pressure level
              A["level"] = xlevel
              self.era   = (xarray.concat([self.era, A], dim="level"))
-     
+             
+       
+    def expand_lon(self, lon, A):
+        """
+        Expands longitude of ERA5 by one point to mimic 
+        wrapping of data in interpolation
+        
+        extra longitudnal point 360.0 is added, the corresponding value is copied
+        from longitude 0 deg.
+        
+        Parameters
+        ----------
+        lon : np.array containing longitude values from 0 - 359.75
+        A : np.array containing the values at grid points defined by lon 
+        Returns
+        -------
+        lon : np.array with extended longitudes 
+        A : np.array with extra dimensions 
+        """
+            
+        A_repeat = A[:, :, :1]
+        A = np.concatenate([A, A_repeat], axis = 2)
+    
+        lon = np.concatenate((lon, np.arange(0, 0.25, 0.25) + 360.0))
+    
+        return lon, A     
+       
+    def interpolate(self, dardar, p_grid = None):
+        """
+        
+
+        Parameters
+        ----------
+        dardar : Instance of DARDAR class
+        p_grid : if defined, pressure grid for interpolation (hPa) is used
+                 otherwise, DARDAR vertical locations are used.
+ 
+        Returns
+        -------
+        grid_t : np.array of gridded ERA5 data on DARDAR grid
+
+        """
+#   get DARDAR locations       
+        lon_d       = dardar.get_data('longitude')
+        lat_d       = dardar.get_data('latitude')
+        height_d    = dardar.get_data('height')
+        
+        
+#   convert longitude from -180 -- 180 to 0--360, if required
+        if lon_d.min()  < 0:
+            lon_d = lon_d % 360
+
+#   if on pressure levels, read in levels and        
+#   add extra pressure level in ERA5 data
+        xlevel = 1200 # hPa
+        self.add_extra_level(xlevel)
+        
+        level   = self.era['level'].data 
+        level   = np.log(level)  # convert pressure to log            
+            
+#   get ERA lat/lon/pressure grids and corresponding field    
+        lat     = self.era['latitude'].data
+        lon     = self.era['longitude'].data        
+        field   = self.era[self.shortname].data[0] # 0 for time dimension 
+        
+#   add one extra dimension to longitude to wrap around during interpolation    
+        lon, field = self.expand_lon(lon, field)        
+             
+#   interpolate ERA5 to DARDAR lat/lon locations    
+ 
+        if p_grid is not None: # if a new p_grid is required  
+          
+            p = np.log(p_grid) # convert pressure to log range
+        else:    # use DARDAR vertical grid
+
+            p_grid = alt2pres(height_d) * 0.01 # convert to hPa
+            p = np.log(p_grid)
+
+        pts = []
+        for i in range(len(p)):
+            point = [[p[i], lat_d[j], lon_d[j]] for j in range(len(lat_d))] 
+            pts.append(point)       
+                 
+        my_interpolating_function = interpolator((level, lat, lon), field)         
+        grid_t = my_interpolating_function(pts)
+        
+        return grid_t
+      
         
 class ERA5s(ERA5):
     """
@@ -136,7 +228,7 @@ class ERA5s(ERA5):
         hour  = f"{t_1.hour:02d}"      
 
         file = ([
-            "ERA5/reanalysis-era5-pressure-levels/reanalysis-era5-pressure-levels_"
+            "ERA5/reanalysis-era5-single-levels/reanalysis-era5-single-levels_"
             + str(year) + str(month) 
             + str(day) + str(hour) + "_"  + parameter + '.nc'])
         
@@ -144,7 +236,72 @@ class ERA5s(ERA5):
         self.era = data.open(filename = file[0])        
 
 #       flip latitude to be in ascending order        
-        self.era = self.era.sortby('latitude' , ascending = True)          
+        self.era = self.era.sortby('latitude' , ascending = True)     
+        
+    def expand_lon(self, lon, A):
+        """
+        Expands longitude of ERA5 by one point to mimic 
+        wrapping of data in interpolation
+        
+        extra longitudnal point 360.0 is added, the corresponding value is copied
+        from longitude 0 deg.
+        
+        Parameters
+        ----------
+        lon : np.array containing longitude values from 0 - 359.75
+        A : np.array containing the values at grid points defined by lon 
+        Returns
+        -------
+        lon : np.array with extended longitudes 
+        A : np.array with extra dimensions 
+        """
+            
+        A_repeat = A[:, :1]
+        A = np.concatenate([A, A_repeat], axis = 1)
+    
+        lon = np.concatenate((lon, np.arange(0, 0.25, 0.25) + 360.0))
+    
+        return lon, A             
          
+        
+    def interpolate(self, dardar):
+        """
+        
+
+        Parameters
+        ----------
+        dardar : Instance of DARDAR class
+
+        Returns
+        -------
+        grid_t : np.array of gridded surface ERA5 data on DARDAR grid
+
+        """
+        lon_d = dardar.get_data('longitude')
+        lat_d = dardar.get_data('latitude')
+        
+        
+#   convert longitude from -180 -- 180 to 0--360, if required
+        if lon_d.min()  < 0:
+            lon_d = lon_d % 360
+            
+            
+#   get ERA lat/lon/pressure grids    
+        lat     = self.era['latitude'].data
+        lon     = self.era['longitude'].data
+        
+        field   = self.era[self.shortname].data[0] # 0 for time dimension 
+        
+#   add one extra dimension to longitude to wrap around during interpolation    
+        lon, field = self.expand_lon(lon, field)        
+
+        pts = [[lat_d[j], lon_d[j]] for j in range(len(lat_d))]       
+                 
+        my_interpolating_function = interpolator((lat, lon), field)         
+        grid_t = my_interpolating_function(pts)
+        
+        return grid_t
+        
+        
      
 
