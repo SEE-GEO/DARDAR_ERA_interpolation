@@ -10,6 +10,7 @@ Created on Thu Nov 26 12:33:27 2020
 from pyhdf.SD import SD, SDC
 import os
 from datetime import datetime, timedelta
+import numpy as np
 
 class DARDARProduct():
     """
@@ -17,13 +18,17 @@ class DARDARProduct():
     
     """    
     
-    def __init__(self, filename):
+    def __init__(self, filename, latlims = None):
         """
         Opens the dardar hdf4 dataset
 
         Parameters
         ----------
         filename : input DARDAR file
+        latlims = None, global data is returned''
+                [lat1, lat2], list containing lower and upper limits of
+        latitude values used to subset DARDAR pass
+
 
         """
         self.filename = filename
@@ -34,7 +39,9 @@ class DARDARProduct():
 
 # list of SDS variables
         self.SDS = datasets_dic.keys()
-            
+        
+        if latlims is not None:                
+            self.latlims = latlims
       
     def get_data(self, variable):
         """
@@ -55,8 +62,18 @@ class DARDARProduct():
             
         sds_obj = self.file.select(variable) # select sds
 
-        data = sds_obj.get() # get sds data
-
+        data = sds_obj.get() # get sds data    
+            
+        if self.latlims is not None:
+            # subsetting  data   
+            if variable is not "height":
+                lat1, lat2 = self.latlims
+                lat  = self.file.select('latitude').get()
+                
+                inds = np.where((lat >= lat1) & (lat <= lat2))
+                
+                data = data[inds]   
+                
         return data
     
    
