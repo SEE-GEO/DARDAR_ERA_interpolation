@@ -24,6 +24,7 @@ pressure levels can be found :
 parameters = {"temperature": "t",
                      "geopotential": "z",
                      "specific_humidity" : "q",
+                     "relative_humidity" : "r",
                      "specific_cloud_ice_water_content": "ciwc",
                      "specific_cloud_liquid_water_content": "clwc",
                      "10m_v_component_of_wind": "v10",
