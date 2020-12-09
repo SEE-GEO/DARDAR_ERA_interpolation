@@ -69,10 +69,10 @@ class ERA5p(ERA5):
 #       download data with matching time stamp
         file = data.download(t_0, t_1)
         
-        year  = t_1.year
-        month = f"{t_1.month:02d}"
-        day   = f"{t_1.day:02d}"
-        hour  = f"{t_1.hour:02d}"      
+        year  = t_0.year
+        month = f"{t_0.month:02d}"
+        day   = f"{t_0.day:02d}"
+        hour  = f"{t_0.hour:02d}"      
 
         file = ([
             "ERA5/reanalysis-era5-pressure-levels/reanalysis-era5-pressure-levels_"
@@ -187,13 +187,11 @@ class ERA5p(ERA5):
              
 #   interpolate ERA5 to DARDAR lat/lon locations    
  
-        if p_grid is not None: # if a new p_grid is required  
-          
+        if p_grid is not None: # if a new p_grid is required           
             p = np.log(p_grid) # convert pressure to log range
-        else:    # use DARDAR vertical grid
 
-            p_grid = alt2pres(height_d) * 0.01 # convert to hPa
-            p = np.log(p_grid)
+        else:    # use ERA5 vertical grid
+            p = level
 
         pts = []
         for i in range(len(p)):
@@ -222,10 +220,10 @@ class ERA5s(ERA5):
 #       download data with matching time stamp
         file = data.download(t_0, t_1)
         
-        year  = t_1.year
-        month = f"{t_1.month:02d}"
-        day   = f"{t_1.day:02d}"
-        hour  = f"{t_1.hour:02d}"      
+        year  = t_0.year
+        month = f"{t_0.month:02d}"
+        day   = f"{t_0.day:02d}"
+        hour  = f"{t_0.hour:02d}"      
 
         file = ([
             "ERA5/reanalysis-era5-single-levels/reanalysis-era5-single-levels_"
