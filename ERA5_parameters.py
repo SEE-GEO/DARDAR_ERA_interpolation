@@ -30,4 +30,5 @@ parameters = {"temperature": "t",
                      "10m_v_component_of_wind": "v10",
                      "10m_u_component_of_wind": "u10",
                      "skin_temperature": "skt",
-                     "2m_temperature": "t2m"}
+                     "2m_temperature": "t2m",
+                     "total_column_water_vapour": 'tcwv'}
