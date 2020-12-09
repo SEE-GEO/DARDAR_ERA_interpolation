@@ -29,4 +29,5 @@ parameters = {"temperature": "t",
                      "specific_cloud_liquid_water_content": "clwc",
                      "10m_v_component_of_wind": "v10",
                      "10m_u_component_of_wind": "u10",
-                     "skin_temperature": "skt",}
+                     "skin_temperature": "skt",
+                     "2m_temperature": "t2m"}
