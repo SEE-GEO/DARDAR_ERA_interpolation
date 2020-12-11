@@ -42,8 +42,8 @@ class DARDARProduct():
 # list of SDS variables
         self.SDS = datasets_dic.keys()
         
-        if latlims is not None:                
-            self.latlims = latlims
+             
+        self.latlims = latlims
       
     def get_data(self, variable):
         """
