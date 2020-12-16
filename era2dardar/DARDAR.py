@@ -44,7 +44,88 @@ class DARDARProduct():
         
              
         self.latlims = latlims
-      
+    
+    @property
+    def latitude(self):
+        """
+        gets latitude values for DARDAR pass
+
+        Returns
+        -------
+        lat : np.array containing latitudes [deg]
+
+        """
+        
+        lat = self.get_data("latitude")
+        return lat
+    
+    @property
+    def longitude(self):
+        """
+        gets longitude values for DARDAR pass
+
+        Returns
+        -------
+        lon : np.array containing longitudes [deg]
+
+        """     
+        lon = self.get_data("longitude")
+        return lon
+
+    @property  
+    def iwc(self):
+        """
+        gets IWC values for DARDAR pass
+
+        Returns
+        -------
+        iwc : np.array containing ice water content []
+
+        """
+        
+        iwc = self.get_data("iwc")
+        return iwc
+    
+    @property    
+    def Z(self):
+        """
+        gets Z values for DARDAR pass
+
+        Returns
+        -------
+        z : np.array containing reflectivities []
+
+        """
+        Z = self.get_data("z")
+        return z
+    
+    @property
+    def time(self):
+                """
+        gets time values for DARDAR pass
+
+        Returns
+        -------
+        z : np.array containing datetime objects for time
+
+        """
+        time = self.get_data("time")
+        return time
+    
+    @property
+    def height(self):
+                """
+        gets altitudes over which DARDAR profiles are defined
+
+        Returns
+        -------
+        height : np.array containing altitudes [m]
+
+        """
+        height = self.get_data("height")
+        return height
+        
+        
     def get_data(self, variable):
         """
         get the data for the selected variable
