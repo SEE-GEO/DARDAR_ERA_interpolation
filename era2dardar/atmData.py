@@ -28,9 +28,9 @@ from scipy import interpolate
 
 class atmdata():
     """
-    atmdata Class which interpolates ERA5 data to DARDAR/Cloudsat grids
-    inputs are dardar class object and the pressure grid over which values are
-    to be interpolated
+    Class atmdata  which interpolates ERA5 data to DARDAR/Cloudsat grids;
+    inputs are dardar/cloudsat class object and the pressure grid over 
+    which values are to be interpolated
     """
     
 
@@ -42,7 +42,7 @@ class atmdata():
         dardar : a DARDAR class instance
         p_grid : np.array, the pressure grid over which ERA5 
         is to be interpolated. Units are in [Pa]
-        
+        If None, then the ERA5 grid is used        
 
         Returns
         -------
@@ -52,10 +52,8 @@ class atmdata():
         
         # time stamp of DARDAR data
         self.dardar  = dardar
-        self.time    = dardar.filename2date()
-        self.p_grid  = p_grid
-        
-        self.lat     = dardar.get_data("latitude")
+        self.p_grid  = p_grid        
+        self.lat     = dardar.latitude
 
     @property    
     def t_0(self):
@@ -66,7 +64,7 @@ class atmdata():
         -------
         a datetime object containing the time of DARDAR pass
         """
-        return self.time
+        return self.dardar.t_0
     
     @property
     def t_1(self):
@@ -77,7 +75,7 @@ class atmdata():
         -------
         a datetime object containing the end time of DARDAR pass
         """
-        return self.time + timedelta(minutes = 30)
+        return self.dardar.t_1
     
         
     @property    
@@ -96,7 +94,7 @@ class atmdata():
         p           = self.p_grid        
         var         = "temperature"
         ERA_t       = ERA5p(self.t_0, self.t_1, var)
-        grid_t      = ERA_t.interpolate(self.dardar, p)
+        grid_t      = ERA_t.interpolate(self.dardar, p* 0.01)
         grid_t      = np.expand_dims(grid_t, 2)
         
         return grid_t
@@ -118,12 +116,12 @@ class atmdata():
             
         var         = "specific_cloud_liquid_water_content"
         ERA_lwc     = ERA5p(self.t_0, self.t_1, var)
-        grid_lwc    = ERA_lwc.interpolate(self.dardar, p)
+        grid_lwc    = ERA_lwc.interpolate(self.dardar, p * 0.01)
         
         grid_p      = np.tile(p, (grid_lwc.shape[1], 1))
         grid_p      = grid_p.T 
-        A           = self.temperature
-        rho         = thermodynamics.density(grid_p * 100, A) #air density
+        A           = np.squeeze(self.temperature)
+        rho         = thermodynamics.density(grid_p, A) #air density
         grid_lwc    = grid_lwc * rho  #convert lwc units to mass concentration
         
         grid_lwc    = np.expand_dims(grid_lwc, axis = (0, 3))
@@ -263,7 +261,7 @@ class atmdata():
         return wind_dir
     
     @property
-    def vmr_h2o(self, p_grid = None):   
+    def vmr_h2o(self):   
         """
         interpolated ERA5 VMR fields to DARDAR grid and pressure grid
         defined in self.p_grid
@@ -273,7 +271,7 @@ class atmdata():
         vmr = Q/1-Q
         
         The VMR is firstly calculated on ERA5 pressure grid and later 
-        interpolated to desired p_grid as log(vmr)
+        interpolated to desired log(p_grid) as log(vmr)
         
         The code for conversion of relative humidity is commented. 
         The RH2VMR conversion assumes the defintions of hydrostatic
@@ -286,7 +284,7 @@ class atmdata():
 
         """
         
-        p           = self.p_grid   
+        p                 = self.p_grid   
         
         # var             = "relative_humidity"
         # ERA_r           = ERA5p(t_0, t_1, var)  # loads ERA5 data as xarray 
@@ -315,9 +313,11 @@ class atmdata():
         grid_q          = ERA_q.interpolate(self.dardar, p_grid = None)
         q2vmr           = thermodynamics.specific_humidity2vmr(grid_q)    
         p_era           = ERA_q.era["level"].data * 100 # Pa
+
+#       interpolate log(vmr) as a function of log(p)     
             
         f_q             =  interpolate.interp1d(np.log(p_era), np.log(q2vmr), axis = 0 )
-        grid_q2vmr      =  np.exp(f_q(np.log(p* 100)))
+        grid_q2vmr      =  np.exp(f_q(np.log(p)))
         
         grid_q2vmr      = np.expand_dims(grid_q2vmr, axis = (0, 3))
         
@@ -335,9 +335,9 @@ class atmdata():
         """        
         grid_q2vmr       = self.vmr_h2o
         
-        grid_N2         = np.ones(grid_q2vmr.shape) * 0.781 # vmr N2
+        grid_N2          = np.ones(grid_q2vmr.shape) * 0.781 # vmr N2
         
-        grid_N2         = scale_vmr(grid_N2, grid_q2vmr)
+        grid_N2          = scale_vmr(grid_N2, grid_q2vmr)
         
         return grid_N2
 
@@ -374,11 +374,11 @@ class atmdata():
         
         p               = self.p_grid   
         
-        iwc             = self.dardar.get_data('iwc')
-        height_d        = self.dardar.get_data('height')
+        iwc             = self.dardar.iwc
+        height_d        = self.dardar.height
         p_grid_d        = alt2pres(height_d)
         f               = interpolate.interp1d(p_grid_d, iwc)
-        grid_iwc        = f(p * 100)
+        grid_iwc        = f(p)
         grid_iwc        = grid_iwc.T
         grid_iwc        = np.expand_dims(grid_iwc, axis = (0, 3))
         grid_iwc        = np.expand_dims(grid_iwc, 3)   

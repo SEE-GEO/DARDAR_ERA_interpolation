@@ -83,7 +83,13 @@ class ERA5p(ERA5):
 
 #       flip latitude to be in ascending order        
         self.era = self.era.sortby('latitude' , ascending = True) 
-    
+        
+#   if on pressure levels, read in levels and        
+#   add extra pressure level in ERA5 data
+        xlevel = 1150 # hPa
+        self.add_extra_level(xlevel)
+        
+        
     def add_extra_level(self,  xlevel):
          """
          adds extra pressure level at xlevel hPa to allow interpolation to 
@@ -159,19 +165,15 @@ class ERA5p(ERA5):
 
         """
 #   get DARDAR locations       
-        lon_d       = dardar.get_data('longitude')
-        lat_d       = dardar.get_data('latitude')
-        height_d    = dardar.get_data('height')
+        lon_d       = dardar.longitude
+        lat_d       = dardar.latitude
+        height_d    = dardar.height
         
         
 #   convert longitude from -180 -- 180 to 0--360, if required
         if lon_d.min()  < 0:
             lon_d = lon_d % 360
 
-#   if on pressure levels, read in levels and        
-#   add extra pressure level in ERA5 data
-        xlevel = 1200 # hPa
-        self.add_extra_level(xlevel)
         
         level   = self.era['level'].data 
         level   = np.log(level)  # convert pressure to log            
@@ -274,8 +276,8 @@ class ERA5s(ERA5):
         grid_t : np.array of gridded surface ERA5 data on DARDAR grid
 
         """
-        lon_d = dardar.get_data('longitude')
-        lat_d = dardar.get_data('latitude')
+        lon_d = dardar.longitude
+        lat_d = dardar.latitude
         
         
 #   convert longitude from -180 -- 180 to 0--360, if required
