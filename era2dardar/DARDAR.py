@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import numpy as np
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
+from era2dardar.utils.seconds2datetime import seconds2datetime
 
 class DARDARProduct():
     """
@@ -101,7 +102,7 @@ class DARDARProduct():
     
     @property
     def time(self):
-                """
+        """
         gets time values for DARDAR pass
 
         Returns
@@ -113,8 +114,39 @@ class DARDARProduct():
         return time
     
     @property
+    def t_0(self):
+        """
+        get the datetime object for first DARDAR profile in the selected scene
+        converts seconds to datetime object using method seconds2datetime
+        
+        Returns
+        -------
+        datetime object
+        """
+        
+        t = self.time[0]
+        t = self.filename2date() + timedelta(seconds = float(t))
+        return t
+    
+    @property
+    def t_1(self):
+        """
+        get the datetime object for last DARDAR profile in the selected scene
+        converts seconds to datetime object using method seconds2datetime
+        
+        Returns
+        -------
+        datetime object
+        """
+        
+        t = self.time[-1]
+        t = self.t_0 + timedelta(minutes = 30)
+        return t
+        
+    
+    @property
     def height(self):
-                """
+        """
         gets altitudes over which DARDAR profiles are defined
 
         Returns
