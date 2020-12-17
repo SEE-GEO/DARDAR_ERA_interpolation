@@ -21,7 +21,7 @@ class DARDARProduct():
     
     """    
     
-    def __init__(self, filename, latlims = None):
+    def __init__(self, filename, latlims = None, node = "A"):
         """
         Opens the dardar hdf4 dataset
 
@@ -31,6 +31,9 @@ class DARDARProduct():
         latlims (None, list)= None, global data is returned; 
                 [lat1, lat2], list containing lower and upper limits of
         latitude values used to subset DARDAR pass
+        
+        node : string "A" or "D", the ascending node or descending node
+               The default node selected is ascending one
 
 
         """
@@ -43,6 +46,7 @@ class DARDARProduct():
 # list of SDS variables
         self.SDS = datasets_dic.keys()
         
+        self.node = node
              
         self.latlims = latlims
     
@@ -98,7 +102,7 @@ class DARDARProduct():
 
         """
         Z = self.get_data("z")
-        return z
+        return Z
     
     @property
     def time(self):
@@ -184,10 +188,27 @@ class DARDARProduct():
             if variable != "height":
                 lat1, lat2 = self.latlims
                 lat  = self.file.select('latitude').get()
+            
+                inds = np.where((lat >= lat1) & (lat <= lat2))[0 ]
+                if len(inds) == 0:
+                    raise Exception("No data in the latitude limits given, please check limits again")
+                lat_sub = lat[inds]
+
+# only increasing latitudes are considered , 
+# to avoid extracting two latitudes, each from ascending and descending node  
                 
-                inds = np.where((lat >= lat1) & (lat <= lat2))
+                diff = (np.diff(lat_sub, 
+                        append = lat_sub[-1] - lat_sub[-2]))
+
+                mask = diff > 0 
                 
-                data = data[inds]   
+                if np.all(~mask):
+                    raise Exception("No increasing latitudes were found")
+                    
+                if self.node == "A": 
+                    data = data[inds][mask]
+                else:
+                    data = data[inds][~mask]
                 
         return data
     
