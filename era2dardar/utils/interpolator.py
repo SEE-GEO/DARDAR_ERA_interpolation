@@ -12,7 +12,7 @@ Created on Wed Dec  2 11:09:54 2020
 
 from scipy.interpolate import RegularGridInterpolator
 
-def interpolator(points, A):
+def interpolator(points, A, method):
         """
         interface to scipy nD linear interpolator
         All dimensions should be in ascending order
@@ -21,6 +21,8 @@ def interpolator(points, A):
         ----------
         points: tuple of ndarray of float, with shapes (m1, ), …, (mn, )
         A : field values to be interpolated from, dimension PxNxM
+        
+        method : "linear", "nearest"
 
         Returns
         -------
@@ -29,4 +31,4 @@ def interpolator(points, A):
         """
 
         return (RegularGridInterpolator(points, A, 
-                                        bounds_error = True, method = 'linear'))
+                                        bounds_error = True, method = method))
