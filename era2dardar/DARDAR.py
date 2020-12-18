@@ -34,6 +34,11 @@ class DARDARProduct():
         
         node : string "A" or "D", the ascending node or descending node
                The default node selected is ascending one
+               If Latlims is None, the complete scene is used.
+               
+        Exceptions:
+            
+            No data is returned if the latitude limits are out of scene
 
 
         """
@@ -49,6 +54,9 @@ class DARDARProduct():
         self.node = node
              
         self.latlims = latlims
+        
+        if self.latitude.size == 0:
+            raise Exception("No data returned, input another latlims")
     
     @property
     def latitude(self):
@@ -194,13 +202,13 @@ class DARDARProduct():
                     raise Exception("No data in the latitude limits given, please check limits again")
                 lat_sub = lat[inds]
 
-# only increasing latitudes are considered , 
 # to avoid extracting two latitudes, each from ascending and descending node  
-                
-                diff = (np.diff(lat_sub, 
-                        append = lat_sub[-1] - lat_sub[-2]))
+            
+                diff = (np.diff(lat_sub,
+                        append = lat_sub[-1] + lat_sub[-1] - lat_sub[-2]))
 
-                mask = diff > 0 
+                        
+                mask = diff > 0
                 
                 if np.all(~mask):
                     raise Exception("No increasing latitudes were found")
@@ -209,6 +217,8 @@ class DARDARProduct():
                     data = data[inds][mask]
                 else:
                     data = data[inds][~mask]
+                
+
                 
         return data
     
@@ -260,7 +270,7 @@ class DARDARProduct():
         return era5_filename    
     
     
-    def plot_overpass(self):
+    def plot_scene(self):
         """
         plots the overpass of DARDAR
 
