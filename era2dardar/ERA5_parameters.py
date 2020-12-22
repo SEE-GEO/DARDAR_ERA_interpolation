@@ -32,4 +32,7 @@ parameters = {"temperature": "t",
                      "skin_temperature": "skt",
                      "2m_temperature": "t2m",
                      "total_column_water_vapour": 'tcwv',
-                     "surface_pressure": "sp"}
+                     "surface_pressure": "sp",
+                     "sea_ice_cover": "siconc",
+                     "land_sea_mask": "lsm",
+                     "snow_depth": "sd"}
