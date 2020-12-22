@@ -137,7 +137,9 @@ class DARDARProduct():
         """
         
         t = self.time[0]
-        t = self.filename2date() + timedelta(seconds = float(t))
+        date = self.filename2date()
+        date = date.replace(hour = 0, minute = 0)
+        t = date + timedelta(seconds = float(t))
         return t
     
     @property
@@ -196,8 +198,10 @@ class DARDARProduct():
             if variable != "height":
                 lat1, lat2 = self.latlims
                 lat  = self.file.select('latitude').get()
+                dn_flag  = self.file.select("day_night_flag").get()
             
-                inds = np.where((lat >= lat1) & (lat <= lat2))[0 ]
+                inds = np.where((lat >= lat1) & (lat <= lat2))[0]
+                
                 if len(inds) == 0:
                     raise Exception("No data in the latitude limits given, please check limits again")
                 lat_sub = lat[inds]
@@ -210,14 +214,23 @@ class DARDARProduct():
                         
                 mask = diff > 0
                 
+                
                 if np.all(~mask):
                     raise Exception("No increasing latitudes were found")
                     
+                # if self.node == "A": 
+                #     data = data[inds][mask][1:-1]
+                # else:
+                #     data = data[inds][~mask][1:-1]
+                mask = dn_flag[inds] == 0     
                 if self.node == "A": 
                     data = data[inds][mask]
                 else:
                     data = data[inds][~mask]
                 
+                
+                
+
 
                 
         return data
