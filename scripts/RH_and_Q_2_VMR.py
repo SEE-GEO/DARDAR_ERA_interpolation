@@ -36,7 +36,7 @@ file = os.path.expanduser("~/Dendrite/SatData/DARDAR/2015/11/06/DARDAR-CLOUD_v2.
 filename = file
 
 # create DARDAR instance
-dardar = DARDARProduct(filename, latlims = [0, 5])
+dardar = DARDARProduct(filename,latlims = None)
 dardar.plot_overpass()  
 # time stamp of DARDAR data 
 t_0 = dardar.filename2date()
@@ -85,9 +85,9 @@ grid_t          = ERA_t.interpolate(dardar, p_grid * 0.01)
 
 
 #%% ------------------convert relative humidity to vmr --------------------------
-grid_p      = np.tile(p_grid, (grid_t.shape[1], 1))
-grid_p      = grid_p.T 
-r2vmr       = rh2vmr(grid_p , grid_t, grid_r)
+grid_p          = np.tile(p_grid, (grid_t.shape[1], 1))
+grid_p          = grid_p.T 
+r2vmr           = rh2vmr(grid_p , grid_t, grid_r)
 
 
 #%%--------------------------------------------------------------------------------
@@ -119,22 +119,22 @@ fig, ax = plt.subplots(1, 1, figsize= [8, 8])
 
 lat_d = dardar.get_data('latitude')    
 
-ax.plot(lat_d, grid_tcwv, label = 'ERA5 TCWV ')
-ax.plot(lat_d, tcwv_q, label = 'Q to TCWV')
-ax.plot(lat_d, tcwv_r, label = 'RH to TWCV')
-ax.set_xlabel('Latitude [deg]')
-ax.set_ylabel('TCWV [kg/m2]')    
+ax.plot(grid_tcwv, lat_d, label = 'ERA5 TCWV ')
+ax.plot( tcwv_q, lat_d, label = 'Q to TCWV')
+ax.plot( tcwv_r, lat_d,label = 'RH to TCWV')
+ax.set_ylabel('Latitude [deg]')
+ax.set_xlabel('TCWV [kg/m2]')    
 ax.legend()
 fig.savefig('Figures/comparison_TWCV.png', bbox_inches = 'tight')
 
     
-#%%---------------------------------------------------------------------------------
-# plotting data below
+#%%-------------------# plotting data below----------------------------------------
+
 p_grid = p_grid * 0.01  ## for plotting use hPa
 lat_d    = dardar.get_data('latitude')
 
 # contour plots for VMR
-fig, axs = plt.subplots(4, 1, figsize = [20, 25])
+fig, axs = plt.subplots(3, 1, figsize = [20, 25])
 
 fig.subplots_adjust(left=0.02, bottom=0.06, right=0.95, top=0.94, wspace=0.2, hspace = 0.5)
 
@@ -158,10 +158,12 @@ axs[1].set_title('Q to VMR')
 axs[2].set_title('(r2vmr - q2vmr)/r2vmr')
 
 d = ((q2vmr - r2vmr)/r2vmr * 100)
+#d = ((r2vmr - np.mean(r2vmr, axis = 1).reshape(-1, 1)))
 #d[t_mix] = np.nan
 #d[t_liq] = np.nan
 im = (axs[2].pcolormesh(lat_d, p_grid, d, shading = 'auto', cmap = 'coolwarm',
-                        vmin = -20, vmax = 20))
+                        vmin = -20, vmax = 20,
+                        ))
 
 fig.colorbar(im, ax=axs[2], extend = 'both')
 axs[2].set_xlabel('Latitude [deg]')
@@ -173,14 +175,14 @@ axs[2].set_ylim(axs[2].get_ylim()[::-1])
 # t[t_mix] = np.nan
 
 
-t_mean = np.mean(grid_t, axis = 1).reshape(-1, 1)
-im = (axs[3].pcolormesh(lat_d, p_grid, grid_t, shading = 'auto', cmap = 'coolwarm', ))
-axs[3].set_ylim(axs[3].get_ylim()[::-1])
-fig.colorbar(im, ax=axs[3], extend = 'both')
-axs[3].set_yscale('log')
-axs[3].set_title('temperature')
-axs[3].set_xlabel('Latitude [deg]')
-axs[3].set_ylabel('Pressure [hPa]')
+# t_mean = np.mean(grid_t, axis = 1).reshape(-1, 1)
+# im = (axs[3].pcolormesh(lat_d, p_grid, grid_t, shading = 'auto', cmap = 'coolwarm', ))
+# axs[3].set_ylim(axs[3].get_ylim()[::-1])
+# fig.colorbar(im, ax=axs[3], extend = 'both')
+# axs[3].set_yscale('log')
+# axs[3].set_title('temperature')
+# axs[3].set_xlabel('Latitude [deg]')
+# axs[3].set_ylabel('Pressure [hPa]')
 
 fig.savefig('Figures/comparison_vmr.png', bbox_inches = 'tight')
 
@@ -195,7 +197,7 @@ for i in [1, 100, 200]:
     ax.set_yscale('log')
 
     ax.set_ylabel('pressure [hPa]')
-    ax.set_xlabel('vmr')   
+    ax.set_xlabel('vmr [m3/m3]')   
 
     ax.set_xscale('log')
 
@@ -208,6 +210,6 @@ for i in [1, 100, 200]:
     ax2.set_xlim(180, 260)
 ax2.set_xlabel('temp[K]')
 ax2.legend( loc = "lower right")
-ax.legend(["r2vmr", "r2vmr"])
+ax.legend(["r2vmr", "q2vmr"])
 #    ax2.set_yscale('log')
 fig.savefig('Figures/vertical_profile_vmr.png', bbox_inches = 'tight')

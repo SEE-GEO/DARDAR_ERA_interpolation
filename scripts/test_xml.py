@@ -24,11 +24,15 @@ p_grid = alt2pres(np.arange(-100, 25000, 250)) * 0.01
 
 
 # DARDAR file
-file = os.path.expanduser("~/Dendrite/SatData/DARDAR/2015/11/06/DARDAR-CLOUD_v2.1.1_2015310114257_50670.hdf")
+#file = os.path.expanduser("~/Dendrite/SatData/DARDAR/2015/11/06/DARDAR-CLOUD_v2.1.1_2015310114257_50670.hdf")
+file = os.path.expanduser("~/Dendrite/SatData/DARDAR/2015/03/12/DARDAR-CLOUD_v2.1.1_2015071190249_47194.hdf")
+#file = os.path.expanduser("~/Dendrite/SatData/DARDAR/2015/03/12/DARDAR-CLOUD_v2.1.1_2015071104824_47189.hdf")
+#file = os.path.expanduser("~/Dendrite/SatData/DARDAR/2015/06/07/DARDAR-CLOUD_v2.1.1_2015158155052_48459.hdf")
+
 filename = file
 
 # create DARDAR instance
-dardar = DARDARProduct(filename, latlims = [20, 25])
+dardar = DARDARProduct(filename, latlims = [-10, 10], node = "A")
   
 # time stamp of DARDAR data 
 t_0 = dardar.filename2date()
@@ -37,6 +41,7 @@ t_1 = t_0 + timedelta(minutes = 30)
 # coordinates of DARDAR data
 lat_d       = dardar.get_data('latitude')
 lon_d       = dardar.get_data('longitude')
+lon_d       = lon_d % 360
 z_d         = dardar.get_data('height')
 
 # temperature
@@ -87,11 +92,13 @@ z_surface     = SRTM30.interpolate(lat_d, lon_d)
 var           = "skin_temperature"
 ERA_skt       = ERA5s(t_0, t_1, var)
 grid_skt      = ERA_skt.interpolate(dardar)
+grid_skt      = np.expand_dims(grid_skt, 1)
 
 # 2 m temperature
 var           = "2m_temperature"
 ERA_t2        = ERA5s(t_0, t_1, var)
 grid_t2       = ERA_t2.interpolate(dardar)
+grid_t2       = np.expand_dims(grid_t2, 1)
 
 
 # u 10m 
@@ -107,13 +114,16 @@ grid_v        = ERA_v.interpolate(dardar)
 
 # convert to wind speed
 wind_speed    = np.sqrt(grid_u**2 + grid_v**2)
-
+wind_speed    = np.expand_dims(wind_speed, 1)
 # convert to wind direction
 wind_dir      = np.arctan2(grid_u, grid_v) * 180 / np.pi  # degree
-
+wind_dir    = np.expand_dims(wind_dir, 1)
 
 
 #-------------------------write to xmls---------------------------------
+grid_t      = np.expand_dims(grid_t, 2)
+grid_z      = np.expand_dims(z_field, 2)
+vmr_grid    = np.expand_dims(vmr_grid, 3)
 
 xml.save(p_grid * 100, 'xmls/p_grid.xml')  # Pa
 xml.save(lat_d, 'xmls/lat_grid.xml')
@@ -124,7 +134,7 @@ xml.save(z_surface, 'xmls/z_surface.xml')
 xml.save(grid_skt, 'xmls/surface_skin_temperature.xml')
 xml.save(wind_speed, 'xmls/wind_speed.xml')
 xml.save(wind_dir, 'xmls/wind_direction.xml')
-xml.save(vmr_grid, 'xmls/vmr_field.xml')
 xml.save(abs_species, "xmls/abs_species.xml")
+xml.save(grid_t2, 'xmls/t2m.xml')
 
 

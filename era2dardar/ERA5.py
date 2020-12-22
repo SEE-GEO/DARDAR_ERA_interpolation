@@ -68,15 +68,15 @@ class ERA5p(ERA5):
 #       download data with matching time stamp
         file = data.download(t_0, t_1)
         
-        year  = t_0.year
-        month = f"{t_0.month:02d}"
-        day   = f"{t_0.day:02d}"
-        hour  = f"{t_0.hour:02d}"      
+        # year  = t_0.year
+        # month = f"{t_0.month:02d}"
+        # day   = f"{t_0.day:02d}"
+        # hour  = f"{t_0.hour:02d}"      
 
-        file = ([
-            "ERA5/reanalysis-era5-pressure-levels/reanalysis-era5-pressure-levels_"
-            + str(year) + str(month) 
-            + str(day) + str(hour) + "_"  + parameter + '.nc'])
+        # file = ([
+        #     "ERA5/reanalysis-era5-pressure-levels/reanalysis-era5-pressure-levels_"
+        #     + str(year) + str(month) 
+        #     + str(day) + str(hour) + "_"  + parameter + '.nc'])
         
 #       load ERA5 data into an xarray           
         self.era = data.open(filename = file[0])        
@@ -149,7 +149,7 @@ class ERA5p(ERA5):
     
         return lon, A     
        
-    def interpolate(self, dardar, p_grid = None):
+    def interpolate(self, dardar, p_grid = None, method = "linear"):
         """
         
 
@@ -159,6 +159,7 @@ class ERA5p(ERA5):
         p_grid : if defined, pressure grid for interpolation (hPa) is used
                  otherwise, DARDAR vertical locations are used.
  
+        method : "nearest", "linear"; default is "linear"
         Returns
         -------
         grid_t : np.array of gridded ERA5 data on DARDAR grid
@@ -167,7 +168,6 @@ class ERA5p(ERA5):
 #   get DARDAR locations       
         lon_d       = dardar.longitude
         lat_d       = dardar.latitude
-        height_d    = dardar.height
         
         
 #   convert longitude from -180 -- 180 to 0--360, if required
@@ -199,7 +199,8 @@ class ERA5p(ERA5):
             point = [[p[i], lat_d[j], lon_d[j]] for j in range(len(lat_d))] 
             pts.append(point)       
                  
-        my_interpolating_function = interpolator((level, lat, lon), field)         
+        my_interpolating_function = (interpolator((level, lat, lon),
+                                                  field, method = method))        
         grid_t = my_interpolating_function(pts)
         
         return grid_t
@@ -263,7 +264,7 @@ class ERA5s(ERA5):
         return lon, A             
          
         
-    def interpolate(self, dardar):
+    def interpolate(self, dardar, method = "linear"):
         """
         
 
@@ -274,7 +275,7 @@ class ERA5s(ERA5):
         Returns
         -------
         grid_t : np.array of gridded surface ERA5 data on DARDAR grid
-
+        method : "linear", "nearest", default is "linear"
         """
         lon_d = dardar.longitude
         lat_d = dardar.latitude
@@ -296,7 +297,8 @@ class ERA5s(ERA5):
 
         pts = [[lat_d[j], lon_d[j]] for j in range(len(lat_d))]       
                  
-        my_interpolating_function = interpolator((lat, lon), field)         
+        my_interpolating_function = (interpolator((lat, lon), field, 
+                                                  method= method))        
         grid_t = my_interpolating_function(pts)
         
         return grid_t

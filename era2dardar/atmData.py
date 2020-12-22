@@ -5,6 +5,12 @@ Created on Wed Dec 16 09:18:07 2020
 
 class to convert ERA5 data to DARDAR grid
 
+Many atm field are provided as properties, 
+however any pressure or single level variable could be
+interpolated to DARDAR grid with general methods:
+    "variable_plevel" and "variable_surface"
+    
+
 
 @author: inderpreet
 
@@ -309,7 +315,7 @@ class atmdata():
         # convert to wind direction
         wind_dir      = np.arctan2(grid_u, grid_v) * 180 / np.pi  # degree
         
-        wind_dir    = np.expand_dims(wind_dir, axis = 1)
+        wind_dir      = np.expand_dims(wind_dir, axis = 1)
         
         return wind_dir
     
@@ -368,7 +374,8 @@ class atmdata():
         p_era           = ERA_q.era["level"].data * 100 # Pa
 
 #       interpolate log(vmr) as a function of log(p)     
-            
+        print (p_era)
+        print (p)
         f_q             =  interpolate.interp1d(np.log(p_era), np.log(q2vmr), axis = 0 )
         grid_q2vmr      =  np.exp(f_q(np.log(p)))
         
@@ -457,9 +464,10 @@ class atmdata():
         grid_z        = grid_z.T
         grid_z        = np.expand_dims(grid_z, axis = (0, 3))
        
-        return grid_z      
+        return grid_z   
     
-    def variable_plevel(self, variable):
+    
+    def variable_plevel(self, variable, method = "linear"):
         """
         interpolated ERA5 pressure variable to DARDAR grid
         and pressure grid defined in self.p_grid
@@ -481,7 +489,7 @@ class atmdata():
         grid_t      = np.expand_dims(grid_t, 2)         
         return grid_t
     
-    def variable_surface(self, variable):
+    def variable_surface(self, variable, method= "linear"):
         """
         interpolated ERA5 pressure variable to DARDAR grid
         
@@ -497,10 +505,70 @@ class atmdata():
         """
         var           = variable
         ERA_t         = ERA5s(self.t_0, self.t_1, var)
-        grid_t        = ERA_t.interpolate(self.dardar)
+        grid_t        = ERA_t.interpolate(self.dardar, method = method)
         grid_t        = np.expand_dims(grid_t, axis = 1)
         
         return grid_t
+    
+    @property
+    def sea_ice_cover(self):
+        """
+        ERA5 sea_ice cover fields interpolated to DARDAR grid.
+       
+        Returns
+        -------
+        grid_skt : np.array containing the interpolated values
+        dimensions [lat, lon]
+
+        """
+        var           = "sea_ice_cover"
+        ERA_sic       = ERA5s(self.t_0, self.t_1, var)
+        grid_sic      = ERA_sic.interpolate(self.dardar, method ="nearest")
+        grid_sic      = np.expand_dims(grid_sic, axis = 1)
+        
+        return grid_sic
+    
+    @property
+    def lsm(self):
+        """
+        ERA5 land/sea mask fields interpolated to DARDAR gri d with "nearest"
+        method
+       
+        Returns
+        -------
+        grid_skt : np.array containing the interpolated values
+        dimensions [lat, lon]
+
+        """
+        var           = "land_sea_mask"
+        ERA_lsm       = ERA5s(self.t_0, self.t_1, var)
+        grid_lsm      = ERA_lsm.interpolate(self.dardar, method = "nearest")
+        
+        iland         = grid_lsm >= 0.5
+        isea          = ~iland
+        grid_lsm[iland]    = 1
+        grid_lsm[isea]   = 0
+        grid_lsm      = np.expand_dims(grid_lsm, axis = 1)
+        
+        return grid_lsm
+    
+    @property
+    def snow_depth(self):
+        """
+        ERA5 snow depth fields interpolated to DARDAR grid.
+       
+        Returns
+        -------
+        grid_skt : np.array containing the interpolated values
+        dimensions [lat, lon]
+
+        """
+        var           = "snow_depth"
+        ERA_sd       = ERA5s(self.t_0, self.t_1, var)
+        grid_sd      = ERA_sd.interpolate(self.dardar, method ="linear")
+        grid_sd      = np.expand_dims(grid_sd, axis = 1)
+        
+        return grid_sd   
 
             
 
