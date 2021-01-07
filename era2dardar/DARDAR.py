@@ -14,6 +14,8 @@ import numpy as np
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 from era2dardar.utils.seconds2datetime import seconds2datetime
+from era2dardar.utils.Z2dbZ import Z2dbZ
+
 
 class DARDARProduct():
     """
@@ -32,7 +34,7 @@ class DARDARProduct():
                 [lat1, lat2], list containing lower and upper limits of
         latitude values used to subset DARDAR pass
         
-        node : string "A" or "D", the ascending node or descending node
+        node : string "A" or "D_N" or "D_S", the ascending node or descending node(NH or SH)
                The default node selected is ascending one
                If Latlims is None, the complete scene is used.
                
@@ -109,7 +111,7 @@ class DARDARProduct():
         z : np.array containing reflectivities []
 
         """
-        Z = self.get_data("z")
+        Z = self.get_data("Z")
         return Z
     
     @property
@@ -153,7 +155,6 @@ class DARDARProduct():
         datetime object
         """
         
-        t = self.time[-1]
         t = self.t_0 + timedelta(minutes = 30)
         return t
         
@@ -212,26 +213,32 @@ class DARDARProduct():
                         append = lat_sub[-1] + lat_sub[-1] - lat_sub[-2]))
 
                         
-                mask = diff > 0
+                mask1 = diff > 0               
                 
-                
-                if np.all(~mask):
+                if np.all(~mask1):
                     raise Exception("No increasing latitudes were found")
                     
-                # if self.node == "A": 
-                #     data = data[inds][mask][1:-1]
-                # else:
-                #     data = data[inds][~mask][1:-1]
-                mask = dn_flag[inds] == 0     
+# day night mask
+                mask2 = dn_flag[inds] == 0     
+
                 if self.node == "A": 
+                    mask = np.logical_and(mask1, mask2)                    
                     data = data[inds][mask]
-                else:
-                    data = data[inds][~mask]
+                if self.node == "D_S":
+                    mask3 = lat_sub < 0
+                    mask  = np.logical_and(~mask1, ~mask2) 
+                    mask  = np.logical_and(mask, mask3)
+                    if np.sum(mask) == 0:
+                        raise Exception("No data in the SH descending pass")
+                    data  = data[inds][mask]        
+                if self.node == "D_N":
+                    mask3 = lat_sub >= 0
+                    mask  = np.logical_and(~mask1, ~mask2)  
+                    mask  = np.logical_and(mask, mask3)
+                    if np.sum(mask) == 0:
+                        raise Exception("No data in the NH descending pass")
+                    data  = data[inds][mask]                      
                 
-                
-                
-
-
                 
         return data
     

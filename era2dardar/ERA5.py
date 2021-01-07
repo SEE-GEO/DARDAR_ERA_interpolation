@@ -30,7 +30,7 @@ class ERA5():
     """
     
     
-    def __init__(self, t_0, t_1, parameter):
+    def __init__(self, t_0, t_1,  parameter, domain = None):
         """
         download and read ERA5 data between times t_0 and t_1
 
@@ -59,11 +59,11 @@ class ERA5p(ERA5):
     inherits from class ERA5
     """
     
-    def __init__(self, t_0, t_1, parameter):
-        super().__init__(t_0, t_1, parameter)
+    def __init__(self, t_0, t_1, parameter, domain = None):
+        super().__init__(t_0, t_1, parameter, domain = None)
         
 #       create ERA5product instance
-        data = ERA5Product('hourly', 'pressure', [parameter])
+        data = ERA5Product('hourly', 'pressure', [parameter], domain = domain)
   
 #       download data with matching time stamp
         file = data.download(t_0, t_1)
@@ -129,24 +129,26 @@ class ERA5p(ERA5):
         Expands longitude of ERA5 by one point to mimic 
         wrapping of data in interpolation
         
-        extra longitudnal point 360.0 is added, the corresponding value is copied
-        from longitude 0 deg.
+        extra longitudnal point 180.25 and -180.25 are added, the corresponding value is copied
+        from longitude -180.0 and 180.0 deg respectively
         
         Parameters
         ----------
-        lon : np.array containing longitude values from 0 - 359.75
+        lon : np.array containing longitude values from -180 to 180
         A : np.array containing the values at grid points defined by lon 
         Returns
         -------
         lon : np.array with extended longitudes 
         A : np.array with extra dimensions 
         """
-            
-        A_repeat = A[:, :, :1]
-        A = np.concatenate([A, A_repeat], axis = 2)
-    
-        lon = np.concatenate((lon, np.arange(0, 0.25, 0.25) + 360.0))
-    
+
+        A_start = A[:, :, -1:]
+        A_end   = A[:, :, :1]
+        A = np.concatenate([A_start, A, A_end], axis = 2)
+ 
+        lon = np.concatenate(([lon.min() - 0.25], lon))    
+        lon = np.concatenate((lon, [0.25 + lon.max()]))
+
         return lon, A     
        
     def interpolate(self, dardar, p_grid = None, method = "linear"):
@@ -171,8 +173,9 @@ class ERA5p(ERA5):
         
         
 #   convert longitude from -180 -- 180 to 0--360, if required
-        if lon_d.min()  < 0:
-            lon_d = lon_d % 360
+         
+#        if lon_d.min()  < 0:
+#              lon_d = lon_d % 360
 
         
         level   = self.era['level'].data 
@@ -180,13 +183,18 @@ class ERA5p(ERA5):
             
 #   get ERA lat/lon/pressure grids and corresponding field    
         lat     = self.era['latitude'].data
-        lon     = self.era['longitude'].data        
+        lon     = self.era['longitude'].data     
         field   = self.era[self.shortname].data[0] # 0 for time dimension 
+
+    #   add one extra dimension to longitude to wrap around during interpolation
+        if lon.min() == -180.0:
+            lon, field = self.expand_lon(lon, field)      
         
-#   add one extra dimension to longitude to wrap around during interpolation    
-        lon, field = self.expand_lon(lon, field)        
-             
-#   interpolate ERA5 to DARDAR lat/lon locations    
+#convert to 0 to 360, this is needed when global data is downloaded, domain = None
+        if lon.max() > 180.5:
+            lon_d  = lon_d % 360.0
+            
+#interpolate ERA5 to DARDAR lat/lon locations    
  
         if p_grid is not None: # if a new p_grid is required           
             p = np.log(p_grid) # convert pressure to log range
@@ -212,25 +220,25 @@ class ERA5s(ERA5):
     inherits from class ERA5
     """
     
-    def __init__(self, t_0, t_1, parameter):
+    def __init__(self, t_0, t_1, parameter, domain= None):
         
-        super().__init__(t_0, t_1, parameter)
+        super().__init__(t_0, t_1, parameter, domain = None)
         
 #       create ERA5product instance
-        data = ERA5Product('hourly', 'surface', [parameter])
+        data = ERA5Product('hourly', 'surface', [parameter], domain= domain)
   
 #       download data with matching time stamp
         file = data.download(t_0, t_1)
         
-        year  = t_0.year
-        month = f"{t_0.month:02d}"
-        day   = f"{t_0.day:02d}"
-        hour  = f"{t_0.hour:02d}"      
+        # year  = t_0.year
+        # month = f"{t_0.month:02d}"
+        # day   = f"{t_0.day:02d}"
+        # hour  = f"{t_0.hour:02d}"      
 
-        file = ([
-            "ERA5/reanalysis-era5-single-levels/reanalysis-era5-single-levels_"
-            + str(year) + str(month) 
-            + str(day) + str(hour) + "_"  + parameter + '.nc'])
+        # file = ([
+        #     "ERA5/reanalysis-era5-single-levels/reanalysis-era5-single-levels_"
+        #     + str(year) + str(month) 
+        #     + str(day) + str(hour) + "_"  + parameter + '.nc'])
         
 #       load ERA5 data into an xarray           
         self.era = data.open(filename = file[0])        
@@ -255,11 +263,13 @@ class ERA5s(ERA5):
         lon : np.array with extended longitudes 
         A : np.array with extra dimensions 
         """
-            
-        A_repeat = A[:, :1]
-        A = np.concatenate([A, A_repeat], axis = 1)
-    
-        lon = np.concatenate((lon, np.arange(0, 0.25, 0.25) + 360.0))
+        
+        A_start = A[ :, -1:]
+        A_end   = A[ :,  :1]
+        A = np.concatenate([A_start, A, A_end], axis = 1)
+ 
+        lon = np.concatenate(([lon.min() - 0.25], lon))    
+        lon = np.concatenate((lon, [0.25 + lon.max()]))
     
         return lon, A             
          
@@ -281,9 +291,7 @@ class ERA5s(ERA5):
         lat_d = dardar.latitude
         
         
-#   convert longitude from -180 -- 180 to 0--360, if required
-        if lon_d.min()  < 0:
-            lon_d = lon_d % 360
+
             
             
 #   get ERA lat/lon/pressure grids    
@@ -292,9 +300,17 @@ class ERA5s(ERA5):
         
         field   = self.era[self.shortname].data[0] # 0 for time dimension 
         
-#   add one extra dimension to longitude to wrap around during interpolation    
-        lon, field = self.expand_lon(lon, field)        
 
+#   add one extra dimension to longitude to wrap around during interpolation  
+        if lon.min() == -180.0:
+            print ("expnded lon")
+            lon, field = self.expand_lon(lon, field)        
+
+#   convert longitude from -180 -- 180 to 0--360, if required
+#   in some cases ERA5 longitudes could be o to 360 formar            
+        if lon.max() > 180.5:
+            lon_d  = lon_d % 360.0
+            
         pts = [[lat_d[j], lon_d[j]] for j in range(len(lat_d))]       
                  
         my_interpolating_function = (interpolator((lat, lon), field, 
