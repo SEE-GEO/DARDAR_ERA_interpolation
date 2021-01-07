@@ -68,7 +68,7 @@ def vmr2mixr(vmr, M_w):
 
     Returns
     -------
-    None.
+    mass mixing ratio [Kg/Kg]
 
     """
     
@@ -77,6 +77,31 @@ def vmr2mixr(vmr, M_w):
     mixr = vmr * M_w/M_d
     
     return mixr
+
+
+def mixr2vmr( mixr, M_w ):
+    """
+    convert mixing ratio to volume mixing ratio
+
+    Parameters
+    ----------
+    mixr : np.array, mass mixing ratio [Kg/Kg]
+    M_w : modelcular mass of species [kg/mol]
+    M_d : modelcular mass of dry air [kg/mol] 
+
+    Returns
+    -------
+    vmr : volume mixing ratio [m3/m3]
+
+    """
+    
+
+    # molecular mass of dry air
+    M_d = 28.9661e-3;
+    
+    vmr = mixr * ( M_d / M_w )
+    return vmr
+
 
 def rh2vmr(grid_p, grid_t, grid_r):
     """

@@ -10,7 +10,7 @@ Created on Wed Dec  2 11:09:54 2020
 @author: inderpreet
 """
 
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator, interpn
 
 def interpolator(points, A, method):
         """
@@ -29,6 +29,6 @@ def interpolator(points, A, method):
         interpolator function
 
         """
-
         return (RegularGridInterpolator(points, A, 
-                                        bounds_error = True, method = method))
+                                        bounds_error = False, method = method, 
+                                        fill_value = None))
