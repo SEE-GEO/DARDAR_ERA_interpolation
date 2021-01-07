@@ -22,9 +22,13 @@ from era2dardar.utils.alt2pressure import alt2pres
 import typhon.physics.thermodynamics as thermodynamics 
 from typhon.topography import SRTM30
 from typhon import constants
+from typhon.physics.atmosphere import pressure2height
 from era2dardar.utils.scale_vmr import scale_vmr
 from scipy import interpolate
 from era2dardar.utils.convert_lon import shift_lon
+from era2dardar.utils.alt2pressure import pres2alt
+from era2dardar.utils.thermodynamics import mixr2vmr
+from era2dardar.utils.pt2z import pt2z
 
 
 class atmdata():
@@ -37,7 +41,7 @@ class atmdata():
     """
     
 
-    def __init__(self, dardar, p_grid = None):
+    def __init__(self, dardar, p_grid = None, domain  = None):
         """
         
         Parameters
@@ -55,6 +59,8 @@ class atmdata():
 
         self.dardar  = dardar
         self.p_grid  = p_grid
+
+        self.domain  = domain
  
        
         if p_grid is None:
@@ -131,7 +137,7 @@ class atmdata():
 
         p           = self.p_grid        
         var         = "temperature"
-        ERA_t       = ERA5p(self.t_0, self.t_1, var)
+        ERA_t       = ERA5p(self.t_0, self.t_1, var, domain = self.domain)
         grid_t      = ERA_t.interpolate(self.dardar, p* 0.01)
         grid_t      = np.expand_dims(grid_t, 2)
         
@@ -153,7 +159,7 @@ class atmdata():
         p           = self.p_grid   
             
         var         = "specific_cloud_liquid_water_content"
-        ERA_lwc     = ERA5p(self.t_0, self.t_1, var)
+        ERA_lwc     = ERA5p(self.t_0, self.t_1, var, domain = self.domain)
         grid_lwc    = ERA_lwc.interpolate(self.dardar, p * 0.01)
         
         grid_p      = np.tile(p, (grid_lwc.shape[1], 1))
@@ -166,6 +172,36 @@ class atmdata():
         
         return grid_lwc
     
+    @property    
+    def vmr_O3(self):
+        """
+        interpolated ERA5 ozone mass mixing ratio fields to DARDAR grid and pressure grid
+        defined in self.p_grid
+        
+        also converts mixr to vmr
+
+        Returns
+        -------
+        grid_O3 : np.array containing the interpolated values mixr converted to vmr
+        dimensions [1, p, lat, lon]
+
+        """
+        
+        p          = self.p_grid   
+            
+        var        = "ozone_mass_mixing_ratio"
+        ERA_o3     = ERA5p(self.t_0, self.t_1, var, domain = self.domain)
+        grid_o3    = ERA_o3.interpolate(self.dardar, p * 0.01)
+
+# molecular mass of ozone        
+        M_w        = 48.0e-3 #[kg/mol]
+        
+        grid_o3    = mixr2vmr(grid_o3, M_w)
+        
+        grid_o3    = np.expand_dims(grid_o3, axis = (0, 3))
+        
+        return grid_o3    
+    
     @property
     def abs_species(self):  
         """        
@@ -177,7 +213,7 @@ class atmdata():
 
         """        
 
-        abs_species   = ["N2","O2","H2O","LWC"]
+        abs_species   = ["N2","O2","H2O","O3","LWC"]
         
         return abs_species
 
@@ -207,23 +243,28 @@ class atmdata():
     @property    
     def z_field(self):
         """
-        interpolated ERA5 geopotential heights fields to DARDAR grid
+        geometrical altitudes, fulfilling hydrostatic equilibrium
         and pressure grid defined in self.p_grid
 
         Returns
         -------
-        grid_z : np.array containing the interpolated values
+        grid_z : np.array containing geometric altitudes in
         dimensions [p, lat, lon]
 
         """
-        g           = constants.g
-        p           = self.p_grid        
-        var         = "geopotential"
-        ERA_t       = ERA5p(self.t_0, self.t_1, var)
-        grid_t      = ERA_t.interpolate(self.dardar, p* 0.01)
-        grid_t      = np.expand_dims(grid_t, 2) / g #[convert geopot. to alt]
+        grid_t      = np.squeeze(self.temperature)
+        h2o         = np.squeeze(self.vmr_h2o)
+        grid_z      = grid_t.copy()
+        lat         = self.lat
+        p0          = 101325.0 #[Pa]
+        z0          = 0   #[m]
+
+        for i in range(grid_t.shape[1]):
+            grid_z[:, i]      = (pt2z(self.p_grid, grid_t[:, i], 
+                                      h2o[:, i], p0, z0, lat[i]))
+        grid_z      = np.expand_dims(grid_z, 2) 
         
-        return grid_t
+        return grid_z
     
     @property
     def skin_temperature(self):
@@ -237,7 +278,7 @@ class atmdata():
 
         """
         var           = "skin_temperature"
-        ERA_skt       = ERA5s(self.t_0, self.t_1, var)
+        ERA_skt       = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
         grid_skt      = ERA_skt.interpolate(self.dardar)
         grid_skt      = np.expand_dims(grid_skt, axis = 1)
         
@@ -255,7 +296,7 @@ class atmdata():
 
         """
         var           = "2m_temperature"
-        ERA_t2        = ERA5s(self.t_0, self.t_1, var)
+        ERA_t2        = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
         grid_t2m       = ERA_t2.interpolate(self.dardar)
         grid_t2m      = np.expand_dims(grid_t2m, axis = 1)
         
@@ -275,12 +316,12 @@ class atmdata():
         """
         # u 10m 
         var           = "10m_u_component_of_wind"
-        ERA_u         = ERA5s(self.t_0, self.t_1, var)
+        ERA_u         = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
         grid_u        = ERA_u.interpolate(self.dardar)
         
         # v 10 m 
         var           = "10m_v_component_of_wind"
-        ERA_v         = ERA5s(self.t_0, self.t_1, var)
+        ERA_v         = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
         grid_v        = ERA_v.interpolate(self.dardar)
         
         # convert to wind speed
@@ -304,12 +345,12 @@ class atmdata():
         
         # u 10m 
         var           = "10m_u_component_of_wind"
-        ERA_u         = ERA5s(self.t_0, self.t_1, var)
+        ERA_u         = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
         grid_u        = ERA_u.interpolate(self.dardar)
         
         # v 10 m 
         var           = "10m_v_component_of_wind"
-        ERA_v         = ERA5s(self.t_0, self.t_1, var)
+        ERA_v         = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
         grid_v        = ERA_v.interpolate(self.dardar)
         
         # convert to wind direction
@@ -368,14 +409,13 @@ class atmdata():
         # grid_r2vmr      =  np.exp(f_r(np.log(p)))
         
         var             = "specific_humidity"
-        ERA_q           = ERA5p(self.t_0, self.t_1, var)
+        ERA_q           = ERA5p(self.t_0, self.t_1, var, domain = self.domain)
         grid_q          = ERA_q.interpolate(self.dardar, p_grid = None)
         q2vmr           = thermodynamics.specific_humidity2vmr(grid_q)    
         p_era           = ERA_q.era["level"].data * 100 # Pa
 
 #       interpolate log(vmr) as a function of log(p)     
-        print (p_era)
-        print (p)
+
         f_q             =  interpolate.interp1d(np.log(p_era), np.log(q2vmr), axis = 0 )
         grid_q2vmr      =  np.exp(f_q(np.log(p)))
         
@@ -421,6 +461,7 @@ class atmdata():
         grid_O2         = scale_vmr(grid_O2, grid_q2vmr)
         
         return grid_O2
+    
         
     @property
     def iwc(self):
@@ -437,12 +478,15 @@ class atmdata():
         iwc             = self.dardar.iwc
         height_d        = self.dardar.height
         p_grid_d        = alt2pres(height_d)
-        f               = interpolate.interp1d(p_grid_d, iwc)
-        grid_iwc        = f(p)
+        f               = (interpolate.interp1d(np.log(p_grid_d), iwc, 
+                                                fill_value = "extrapolate"))
+        grid_iwc        = f(np.log(p))
         grid_iwc        = grid_iwc.T
         grid_iwc        = np.expand_dims(grid_iwc, axis = (0, 3))
        
-        return grid_iwc                    
+        return grid_iwc       
+
+             
         
     @property
     def Z(self):
@@ -456,13 +500,15 @@ class atmdata():
         
         p               = self.p_grid   
         
-        Z               = self.dardar.z
+        Z               = self.dardar.Z
+        
         height_d        = self.dardar.height
         p_grid_d        = alt2pres(height_d)
-        f               = interpolate.interp1d(p_grid_d, Z)
-        grid_z        = f(p)
-        grid_z        = grid_z.T
-        grid_z        = np.expand_dims(grid_z, axis = (0, 3))
+        f               = (interpolate.interp1d(np.log(p_grid_d), Z,
+                                               fill_value = "extrapolate"))
+        grid_z          = f(np.log(p))
+        grid_z          = grid_z.T
+        grid_z          = np.expand_dims(grid_z, axis = (0, 3))
        
         return grid_z   
     
@@ -484,7 +530,7 @@ class atmdata():
         """
         p           = self.p_grid        
         var         = variable
-        ERA_t       = ERA5p(self.t_0, self.t_1, var)
+        ERA_t       = ERA5p(self.t_0, self.t_1, var, domain = self.domain)
         grid_t      = ERA_t.interpolate(self.dardar, p* 0.01)
         grid_t      = np.expand_dims(grid_t, 2)         
         return grid_t
@@ -504,7 +550,7 @@ class atmdata():
 
         """
         var           = variable
-        ERA_t         = ERA5s(self.t_0, self.t_1, var)
+        ERA_t         = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
         grid_t        = ERA_t.interpolate(self.dardar, method = method)
         grid_t        = np.expand_dims(grid_t, axis = 1)
         
@@ -522,7 +568,7 @@ class atmdata():
 
         """
         var           = "sea_ice_cover"
-        ERA_sic       = ERA5s(self.t_0, self.t_1, var)
+        ERA_sic       = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
         grid_sic      = ERA_sic.interpolate(self.dardar, method ="nearest")
         grid_sic      = np.expand_dims(grid_sic, axis = 1)
         
@@ -541,7 +587,7 @@ class atmdata():
 
         """
         var           = "land_sea_mask"
-        ERA_lsm       = ERA5s(self.t_0, self.t_1, var)
+        ERA_lsm       = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
         grid_lsm      = ERA_lsm.interpolate(self.dardar, method = "nearest")
         
         iland         = grid_lsm >= 0.5
@@ -563,9 +609,9 @@ class atmdata():
         dimensions [lat, lon]
 
         """
-        var           = "snow_depth"
-        ERA_sd       = ERA5s(self.t_0, self.t_1, var)
-        grid_sd      = ERA_sd.interpolate(self.dardar, method ="linear")
+        var          = "snow_depth"
+        ERA_sd       = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
+        grid_sd      = ERA_sd.interpolate(self.dardar, method ="nearest")
         grid_sd      = np.expand_dims(grid_sd, axis = 1)
         
         return grid_sd   
