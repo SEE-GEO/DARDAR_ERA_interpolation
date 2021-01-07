@@ -18,8 +18,12 @@ import typhon.physics.atmosphere as atmosphere
 import typhon.arts.xml as xml
 from typhon.topography import SRTM30
 from era2dardar.utils.scale_vmr import scale_vmr
+import matplotlib.pyplot as plt
 
-p_grid = alt2pres(np.arange(-100, 25000, 250)) * 0.01
+# pressure grid
+p_grid = alt2pres(np.arange(-700, 20000, 250))
+p_grid = np.concatenate([p_grid, np.array([30, 20, 10, 7, 5, 3, 2, 1]) * 100])
+p_grid = p_grid * 0.01
 
 
 
@@ -28,14 +32,31 @@ p_grid = alt2pres(np.arange(-100, 25000, 250)) * 0.01
 file = os.path.expanduser("~/Dendrite/SatData/DARDAR/2015/03/12/DARDAR-CLOUD_v2.1.1_2015071190249_47194.hdf")
 #file = os.path.expanduser("~/Dendrite/SatData/DARDAR/2015/03/12/DARDAR-CLOUD_v2.1.1_2015071104824_47189.hdf")
 #file = os.path.expanduser("~/Dendrite/SatData/DARDAR/2015/06/07/DARDAR-CLOUD_v2.1.1_2015158155052_48459.hdf")
-
+file = os.path.expanduser("~/Dendrite/SatData/DARDAR/2009/06/03/DARDAR-CLOUD_v2.1.1_2009154021055_16481.hdf")
 filename = file
 
 # create DARDAR instance
-dardar = DARDARProduct(filename, latlims = [-10, 10], node = "A")
+dardar = DARDARProduct(filename, latlims = [-80, 80], node = "A")
   
+lon          = dardar.longitude 
+lat          = dardar.latitude
+
+lat1         = np.around(lat.min() - 2)
+lat2         = np.around(lat.max() + 2)
+
+lon1         = np.around(lon.min() - 2)
+lon2         = np.around(lon.max() + 2)
+
+if lon1 < -180:
+    lon1 = -180.0
+if lon2 > 180:
+    lon2 = 180.0    
+    
+domain  = [lat1, lat2, lon1, lon2]
+        
 # time stamp of DARDAR data 
-t_0 = dardar.filename2date()
+t_0 = dardar.t_0
+#t_1 = t_0 + timedelta(seconds = float(dardar.time[-1]))
 t_1 = t_0 + timedelta(minutes = 30)
 
 # coordinates of DARDAR data
@@ -45,10 +66,41 @@ lon_d       = lon_d % 360
 z_d         = dardar.get_data('height')
 
 # temperature
-var         = "temperature"
-ERA_t       = ERA5p(t_0, t_1, var)
+var         = "specific_humidity"
+ERA_t       = ERA5p(t_0, t_1, var, domain = None)
 grid_t      = ERA_t.interpolate(dardar, p_grid)
 
+
+#--------------------------------------------------------------
+
+ERA_tt       = ERA5p(t_0, t_1, var, domain = domain)
+t_new       = ERA_tt.interpolate(dardar, p_grid)
+ 
+
+fig, ax = plt.subplots(1, 1)
+ax.plot( lat_d, grid_t[25, :])
+ax.plot( lat_d, t_new[25 ,:])
+
+ax.set_yscale('log')
+ 
+#-----------------------------------------------------------
+var         = "2m_temperature"
+ERA_t       = ERA5s(t_0, t_1, var, domain = None)
+grid_t      = ERA_t.interpolate(dardar,)
+
+
+#--------------------------------------------------------------
+
+ERA_tt       = ERA5s(t_0, t_1, var, domain = domain)
+t_new       = ERA_tt.interpolate(dardar)
+
+fig, ax = plt.subplots(1, 1)
+ax.plot( grid_t[ :], '.')
+ax.plot( t_new[:], '.')
+
+
+
+#-------------------------------------------------------------
 
 grid_p      = np.tile(p_grid, (grid_t.shape[1], 1))
 grid_p      = grid_p.T 
@@ -131,7 +183,7 @@ xml.save(lon_d, 'xmls/lon_grid.xml')
 xml.save(grid_t, 'xmls/t_field.xml')
 xml.save(z_field, "xmls/z_field.xml")
 xml.save(z_surface, 'xmls/z_surface.xml')
-xml.save(grid_skt, 'xmls/surface_skin_temperature.xml')
+xml.save(grid_skt, 'xmls/skt.xml')
 xml.save(wind_speed, 'xmls/wind_speed.xml')
 xml.save(wind_dir, 'xmls/wind_direction.xml')
 xml.save(abs_species, "xmls/abs_species.xml")
