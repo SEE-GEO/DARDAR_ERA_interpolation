@@ -172,7 +172,6 @@ class DARDARProduct():
         height = self.get_data("height")
         return height
         
-        
     def get_data(self, variable):
         """
         get the data for the selected variable
@@ -199,48 +198,119 @@ class DARDARProduct():
             if variable != "height":
                 lat1, lat2 = self.latlims
                 lat  = self.file.select('latitude').get()
-                dn_flag  = self.file.select("day_night_flag").get()
-            
-                inds = np.where((lat >= lat1) & (lat <= lat2))[0]
+ #               dn_flag  = self.file.select("day_night_flag").get()
                 
-                if len(inds) == 0:
-                    raise Exception("No data in the latitude limits given, please check limits again")
-                lat_sub = lat[inds]
+
+            lat_sub = lat
 
 # to avoid extracting two latitudes, each from ascending and descending node  
+# find the part of orbit with increasing latitudes            
             
-                diff = (np.diff(lat_sub,
-                        append = lat_sub[-1] + lat_sub[-1] - lat_sub[-2]))
-
-                        
-                mask1 = diff > 0               
-                
-                if np.all(~mask1):
-                    raise Exception("No increasing latitudes were found")
+            diff = (np.diff(lat,
+                    append = lat[-1] + lat[-1] - lat[-2]))            
                     
-# day night mask
-                mask2 = dn_flag[inds] == 0     
+            mask1 = diff > 0 
+    
+            
+            if np.all(~mask1):
+                raise Exception("No increasing latitudes were found")
+                
+            
+            if self.node == "A": 
 
-                if self.node == "A": 
-                    mask = np.logical_and(mask1, mask2)                    
-                    data = data[inds][mask]
-                if self.node == "D_S":
-                    mask3 = lat_sub < 0
-                    mask  = np.logical_and(~mask1, ~mask2) 
-                    mask  = np.logical_and(mask, mask3)
-                    if np.sum(mask) == 0:
-                        raise Exception("No data in the SH descending pass")
-                    data  = data[inds][mask]        
-                if self.node == "D_N":
-                    mask3 = lat_sub >= 0
-                    mask  = np.logical_and(~mask1, ~mask2)  
-                    mask  = np.logical_and(mask, mask3)
-                    if np.sum(mask) == 0:
-                        raise Exception("No data in the NH descending pass")
-                    data  = data[inds][mask]                      
+                lat_sub = lat[mask1] 
+                inds = (lat_sub >= lat1) & (lat_sub <= lat2)                      
+                data = data[mask1][inds]
+
+            if self.node == "D_N":
+
+                lat_sub = lat[~mask1] 
+                inds = (lat_sub >= 0) & (lat_sub <= lat2)  
+                if np.sum(~mask1) == 0:
+                    raise Exception("No data in the NH descending pass")
+                data  = data[~mask1][inds]      
+
+            if self.node == "D_S":
+
+                lat_sub = lat[~mask1] 
+                inds = (lat_sub >= lat1) & (lat_sub < 0)  
+                if np.sum(~mask1) == 0:
+                    raise Exception("No data in the SH descending pass")
+                data  = data[~mask1][inds]                  
+                       
                 
                 
         return data
+    
+        
+#     def get_data1(self, variable):
+#         """
+#         get the data for the selected variable
+#         complete list of SDS variables is also contained in self.SDS
+
+#         Parameters
+#         ----------
+#         variable : Input SDS variable,
+
+#         Returns
+#         -------
+#         ndarray containing the input SDS variable
+
+#         """
+#         if variable not in self.SDS:
+#             raise Exception("'Valid SDS should be one of ", self.SDS) 
+            
+#         sds_obj = self.file.select(variable) # select sds
+
+#         data = sds_obj.get() # get sds data    
+            
+#         if self.latlims is not None:
+#             # subsetting  data   
+#             if variable != "height":
+#                 lat1, lat2 = self.latlims
+#                 lat  = self.file.select('latitude').get()
+#                 dn_flag  = self.file.select("day_night_flag").get()
+            
+#                 inds = np.where((lat >= lat1) & (lat <= lat2))[0]
+                
+#                 if len(inds) == 0:
+#                     raise Exception("No data in the latitude limits given, please check limits again")
+#                 lat_sub = lat[inds]
+
+# # to avoid extracting two latitudes, each from ascending and descending node  
+            
+#                 diff = (np.diff(lat_sub,
+#                         append = lat_sub[-1] + lat_sub[-1] - lat_sub[-2]))
+
+                        
+#                 mask1 = diff > 0               
+                
+#                 if np.all(~mask1):
+#                     raise Exception("No increasing latitudes were found")
+                    
+# # day night mask
+#                 mask2 = dn_flag[inds] == 0     
+
+#                 if self.node == "A": 
+#                     mask = np.logical_and(mask1, mask2)                    
+#                     data = data[inds][mask]
+#                 if self.node == "D_S":
+#                     mask3 = lat_sub < 0
+#                     mask  = np.logical_and(~mask1, ~mask2) 
+#                     mask  = np.logical_and(mask, mask3)
+#                     if np.sum(mask) == 0:
+#                         raise Exception("No data in the SH descending pass")
+#                     data  = data[inds][mask]        
+#                 if self.node == "D_N":
+#                     mask3 = lat_sub >= 0
+#                     mask  = np.logical_and(~mask1, ~mask2)  
+#                     mask  = np.logical_and(mask, mask3)
+#                     if np.sum(mask) == 0:
+#                         raise Exception("No data in the NH descending pass")
+#                     data  = data[inds][mask]                      
+                
+                
+#         return data    
     
    
     def filename2date(self):
