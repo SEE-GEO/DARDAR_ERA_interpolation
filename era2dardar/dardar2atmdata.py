@@ -36,14 +36,6 @@ def dardar2atmdata(dardar, p_grid, domain = None):
 
     """
 
-    # DARDAR file
-
-#    filename        = dardarfile
-    
-    # create DARDAR instance
-#    dardar          = DARDARProduct(filename, latlims = lat_lims, node = N) 
-    
-#    p_grid          = alt2pres(np.arange(-100, 25000, 250)) #[Pa] 
     atm             = atmdata(dardar, p_grid, domain = domain)
     vmr_h2o         = atm.vmr_h2o
     vmr_N2          = atm.vmr_N2
@@ -52,19 +44,12 @@ def dardar2atmdata(dardar, p_grid, domain = None):
     lwc             = atm.clwc
 
     time            = atm.t_0.strftime("%Y%m%d%H%M")
-    Z               = atm.Z
 
 
-# filter Z and lwc wrt to dbZ values, all values with dbZ <=-25 are set to zero    
-    dbZ  = Z
-    dbZ[Z>0] = Z2dbZ(Z[Z>0])
-    Z[dbZ <= -25]    = 0
-    lwc[dbZ <= -25]  = 0
     
-# vmr field [N2, O2, h20, O3, LWC]
     vmr_field       = np.concatenate([vmr_N2,vmr_O2,
                               vmr_h2o, vmr_O3, lwc], axis = 0)    
- 
+
 # atm_fields as a dictionary    
     atm_fields      = {
                         "time"            : time,  
@@ -85,7 +70,8 @@ def dardar2atmdata(dardar, p_grid, domain = None):
                         "lsm"             : atm.lsm,
                         "sea_ice_cover"   : atm.sea_ice_cover,
                         "snow_depth"      : atm.snow_depth,
-                        "reflectivities"  : Z
+                        "reflectivities"  : atm.Z,
+                        "N0star"          : atm.N0star,
                         }
 # save  atm_fields to xml files   
     

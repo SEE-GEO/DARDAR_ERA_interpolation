@@ -488,7 +488,7 @@ class atmdata():
         The IWC data from DARDAR interpolated to pressure grid defined in
         p_grid
         -------
-        grid_N2 : np.array containing the interpolated values in
+        grid_iwc : np.array containing the interpolated values in
         dimensions [1, p, lat, lon]
         """ 
         
@@ -505,7 +505,29 @@ class atmdata():
        
         return grid_iwc       
 
-             
+    @property
+    def N0star(self):
+        """
+        The N0star data from DARDAR interpolated to pressure grid defined in
+        p_grid
+        -------
+        grid_N0star: np.array containing the interpolated values in
+        dimensions [1, p, lat, lon]
+        """ 
+        
+        p               = self.p_grid   
+        
+        iwc             = self.dardar.N0star
+        height_d        = self.dardar.height
+        p_grid_d        = alt2pres(height_d)
+        f               = (interpolate.interp1d(np.log(p_grid_d), iwc, 
+                                                fill_value = "extrapolate"))
+        grid_N0star        = f(np.log(p))
+        grid_N0star        = grid_N0star.T
+        grid_N0star        = np.expand_dims(grid_N0star, axis = (0, 3))
+       
+        return grid_N0star       
+           
         
     @property
     def Z(self):

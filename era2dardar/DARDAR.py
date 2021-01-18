@@ -113,6 +113,20 @@ class DARDARProduct():
         """
         Z = self.get_data("Z")
         return Z
+
+    @property    
+    def N0star(self):
+        """
+        gets NOstar values for DARDAR pass
+
+        Returns
+        -------
+        z : np.array containing 
+        Retrieved normalized number concentration parameter [NOstar]
+
+        """
+        N0star = self.get_data("N0star")
+        return N0star
     
     @property
     def time(self):
