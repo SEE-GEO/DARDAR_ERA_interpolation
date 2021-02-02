@@ -218,27 +218,27 @@ class atmdata():
         
         return abs_species
 
-    @property
-    def z_surface(self):
-        """
-        z_surface fields interpolated to DARDAR grid.
-        The values are interpolated using topography module in typhon
-        uses SRTM30 near-global digital elevation model (DEM) 
+    # @property
+    # def z_surface(self):
+    #     """
+    #     z_surface fields interpolated to DARDAR grid.
+    #     The values are interpolated using topography module in typhon
+    #     uses SRTM30 near-global digital elevation model (DEM) 
 
-        Returns
-        -------
-        z_surface : np.array containing the interpolated values
-        dimensions [lat, lon]
+    #     Returns
+    #     -------
+    #     z_surface : np.array containing the interpolated values
+    #     dimensions [lat, lon]
 
-        """
+    #     """
         
-        #  z-surface, from typhon.topography
-        lat_d         = self.dardar.get_data("latitude")
-        lon_d         = self.dardar.get_data("longitude")
-        z_surface     = SRTM30.interpolate(lat_d, lon_d)
-        z_surface     = np.expand_dims(z_surface, axis = 1)
+    #     #  z-surface, from typhon.topography
+    #     lat_d         = self.dardar.get_data("latitude")
+    #     lon_d         = self.dardar.get_data("longitude")
+    #     z_surface     = SRTM30.interpolate(lat_d, lon_d)
+    #     z_surface     = np.expand_dims(z_surface, axis = 1)
         
-        return z_surface
+    #     return z_surface
     
     @property
     def p_surface(self):
@@ -259,6 +259,47 @@ class atmdata():
         
         return grid_sp   
 
+    @property
+    def orography(self):
+        """
+        surface pressure fields interpolated to DARDAR grid.
+      
+        Returns
+        -------
+        p_surface : np.array containing the interpolated values
+        dimensions [lat, lon]
+
+        """
+        
+        var         = "orography"
+        ERA_z       = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
+        grid_z      = ERA_z.interpolate(self.dardar)
+        grid_z      = np.expand_dims(grid_z, axis = 1)
+        
+        return grid_z/constants.g   
+    
+    # @property
+    # def z_surface1(self):
+    #     """
+    #     surface pressure fields interpolated to DARDAR grid.
+    #     1000 hPa from ERA5 geopotential is assumed to be proxy for 
+    #     surface height
+      
+    #     Returns
+    #     -------
+    #     p_surface : np.array containing the interpolated values
+    #     dimensions [lat, lon]
+
+    #     """
+        
+    #     var         = "geopotential"
+    #     ERA_z       = ERA5p(self.t_0, self.t_1, var, domain = self.domain)
+    #     grid_z      = np.squeeze(ERA_z.interpolate(self.dardar, p_grid = [1000.0]))
+    #     grid_z      = np.expand_dims(grid_z, axis = 1)
+        
+    #     return grid_z/constants.g      
+    
+    
     @property    
     def z_field(self):
         """
@@ -276,8 +317,9 @@ class atmdata():
         grid_z      = grid_t.copy()
         lat         = self.lat
         p0          = np.squeeze(self.p_surface)
-        z0          = np.squeeze(self.z_surface)
+ #       z0          = np.squeeze(self.z_surface)
 
+        z0          = np.squeeze(self.orography)
         for i in range(grid_t.shape[1]):
             grid_z[:, i]      = (pt2z(self.p_grid, grid_t[:, i], 
                                       h2o[:, i], p0[i], z0[i], lat[i]))
@@ -517,10 +559,10 @@ class atmdata():
         
         p               = self.p_grid   
         
-        iwc             = self.dardar.N0star
+        N0star          = self.dardar.N0star
         height_d        = self.dardar.height
         p_grid_d        = alt2pres(height_d)
-        f               = (interpolate.interp1d(np.log(p_grid_d), iwc, 
+        f               = (interpolate.interp1d(np.log(p_grid_d), N0star, 
                                                 fill_value = "extrapolate"))
         grid_N0star        = f(np.log(p))
         grid_N0star        = grid_N0star.T
