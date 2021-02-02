@@ -59,6 +59,9 @@ class DARDARProduct():
         
         if self.latitude.size == 0:
             raise Exception("No data returned, input another latlims")
+            
+    def close(self):
+         return self.file.end()       
     
     @property
     def latitude(self):
@@ -215,44 +218,44 @@ class DARDARProduct():
  #               dn_flag  = self.file.select("day_night_flag").get()
                 
 
-            lat_sub = lat
-
-# to avoid extracting two latitudes, each from ascending and descending node  
-# find the part of orbit with increasing latitudes            
-            
-            diff = (np.diff(lat,
-                    append = lat[-1] + lat[-1] - lat[-2]))            
-                    
-            mask1 = diff > 0 
+                lat_sub = lat
     
-            
-            if np.all(~mask1):
-                raise Exception("No increasing latitudes were found")
+    # to avoid extracting two latitudes, each from ascending and descending node  
+    # find the part of orbit with increasing latitudes            
                 
-            
-            if self.node == "A": 
-
-                lat_sub = lat[mask1] 
-                inds = (lat_sub >= lat1) & (lat_sub <= lat2)                      
-                data = data[mask1][inds]
-
-            if self.node == "D_N":
-
-                lat_sub = lat[~mask1] 
-                inds = (lat_sub >= 0) & (lat_sub <= lat2)  
-                if np.sum(~mask1) == 0:
-                    raise Exception("No data in the NH descending pass")
-                data  = data[~mask1][inds]      
-
-            if self.node == "D_S":
-
-                lat_sub = lat[~mask1] 
-                inds = (lat_sub >= lat1) & (lat_sub < 0)  
-                if np.sum(~mask1) == 0:
-                    raise Exception("No data in the SH descending pass")
-                data  = data[~mask1][inds]                  
-                       
+                diff = (np.diff(lat,
+                        append = lat[-1] + lat[-1] - lat[-2]))            
+                        
+                mask1 = diff > 0 
+        
                 
+                if np.all(~mask1):
+                    raise Exception("No increasing latitudes were found")
+                    
+                
+                if self.node == "A": 
+    
+                    lat_sub = lat[mask1] 
+                    inds = (lat_sub >= lat1) & (lat_sub <= lat2)                      
+                    data = data[mask1][inds]
+    
+                if self.node == "D_N":
+    
+                    lat_sub = lat[~mask1] 
+                    inds = (lat_sub >= 0) & (lat_sub <= lat2)  
+                    if np.sum(~mask1) == 0:
+                        raise Exception("No data in the NH descending pass")
+                    data  = data[~mask1][inds]      
+    
+                if self.node == "D_S":
+    
+                    lat_sub = lat[~mask1] 
+                    inds = (lat_sub >= lat1) & (lat_sub < 0)  
+                    if np.sum(~mask1) == 0:
+                        raise Exception("No data in the SH descending pass")
+                    data  = data[~mask1][inds]                  
+                           
+                    
                 
         return data
     

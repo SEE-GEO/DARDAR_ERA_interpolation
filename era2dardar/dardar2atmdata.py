@@ -45,7 +45,7 @@ def dardar2atmdata(dardar, p_grid, domain = None):
 
     time            = atm.t_0.strftime("%Y%m%d%H%M")
 
-
+    
     
     vmr_field       = np.concatenate([vmr_N2,vmr_O2,
                               vmr_h2o, vmr_O3, lwc], axis = 0)    
@@ -63,7 +63,7 @@ def dardar2atmdata(dardar, p_grid, domain = None):
                         "t2m"             : atm.t2m,
                         "wind_speed"      : atm.wind_speed,
                         "wind_direction"  : atm.wind_direction,
-                        "iwc"             : atm.iwc,
+#                        "iwc"             : atm.iwc,
                         "z_surface"       : atm.z_surface,
                         "abs_species"     : atm.abs_species,                   
                         "vmr_field"       : vmr_field, 
@@ -71,7 +71,7 @@ def dardar2atmdata(dardar, p_grid, domain = None):
                         "sea_ice_cover"   : atm.sea_ice_cover,
                         "snow_depth"      : atm.snow_depth,
                         "reflectivities"  : atm.Z,
-                        "N0star"          : atm.N0star,
+#                        "N0star"          : atm.N0star,
                         }
 # save  atm_fields to xml files   
     
