@@ -36,4 +36,6 @@ parameters = {"temperature": "t",
                      "sea_ice_cover": "siconc",
                      "land_sea_mask": "lsm",
                      "snow_depth": "sd",
-                     "ozone_mass_mixing_ratio": "o3"}
+                     "ozone_mass_mixing_ratio": "o3",
+                     "surface_pressure": "sp",
+                     "orography": "z"}
