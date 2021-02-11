@@ -33,8 +33,9 @@ from era2dardar.utils.pt2z import pt2z
 
 class atmdata():
     """
-    Class atmdata  which interpolates ERA5 data to DARDAR/Cloudsat grids;
-    inputs are dardar/cloudsat class object and the pressure grid over 
+    Class atmdata  which interpolates ERA5 data to DARDAR grids or
+    fot that matter any lat/lon location defined by dardar/locations object
+    inputs are dardar/locations class object and the pressure grid over 
     which values are to be interpolated
     The returned outputs for each are in ARTS grid format and 
     can be saved to xml using typhon xml functions
@@ -46,7 +47,8 @@ class atmdata():
         
         Parameters
         ----------
-        dardar : a DARDAR class instance
+        dardar : a DARDAR class instance or locations class instance which describes
+        custom lat/lon locations
         p_grid : np.array, the pressure grid over which ERA5 
         is to be interpolated. Units are in [Pa]
         If None, then the ERA5 grid is used [hard coded right now]       
@@ -164,7 +166,7 @@ class atmdata():
         
         grid_p      = np.tile(p, (grid_lwc.shape[1], 1))
         grid_p      = grid_p.T 
-        A           = np.squeeze(self.temperature)
+        A           = np.squeeze(self.temperature, axis = 2)
         rho         = thermodynamics.density(grid_p, A) #air density
         grid_lwc    = grid_lwc * rho  #convert lwc units to mass concentration
         
@@ -219,7 +221,7 @@ class atmdata():
         return abs_species
 
     # @property
-    # def z_surface(self):
+    # def z_surface_strm(self):
     #     """
     #     z_surface fields interpolated to DARDAR grid.
     #     The values are interpolated using topography module in typhon
@@ -260,9 +262,11 @@ class atmdata():
         return grid_sp   
 
     @property
-    def orography(self):
+    def z_surface(self):
         """
         surface pressure fields interpolated to DARDAR grid.
+        converison of geopotential to geometric height assumes only latitudinal
+        variation of g and R
       
         Returns
         -------
@@ -274,30 +278,47 @@ class atmdata():
         var         = "orography"
         ERA_z       = ERA5s(self.t_0, self.t_1, var, domain = self.domain)
         grid_z      = ERA_z.interpolate(self.dardar)
-        grid_z      = np.expand_dims(grid_z, axis = 1)
+#        grid_z      = np.expand_dims(grid_z, axis = 1)
         
-        return grid_z/constants.g   
-    
-    # @property
-    # def z_surface1(self):
-    #     """
-    #     surface pressure fields interpolated to DARDAR grid.
-    #     1000 hPa from ERA5 geopotential is assumed to be proxy for 
-    #     surface height
-      
-    #     Returns
-    #     -------
-    #     p_surface : np.array containing the interpolated values
-    #     dimensions [lat, lon]
+        lat = self.lat
+        
+        s1 = np.sin(lat/180*np.pi);
+        s2 = np.sin(2*lat/180*np.pi);
 
-    #     """
+        gE  = 9.780327 * (1 + 5.3024e-3 * s1**2 - 5.8e-6*s2**2)
         
-    #     var         = "geopotential"
-    #     ERA_z       = ERA5p(self.t_0, self.t_1, var, domain = self.domain)
-    #     grid_z      = np.squeeze(ERA_z.interpolate(self.dardar, p_grid = [1000.0]))
-    #     grid_z      = np.expand_dims(grid_z, axis = 1)
+            
+        rE  = 6378137./(1.006803-0.006706*s1**2)
         
-    #     return grid_z/constants.g      
+        grid_z = rE*( gE*rE / ( gE*rE - grid_z ) -1 )
+        
+        grid_z = np.expand_dims(grid_z, axis = 1)
+
+        
+        return grid_z
+    
+    @property
+    def z0_p0(self):
+        """
+        reference altitude and pressure, needed to calculate z_field
+        simply chosen as the geopotential altitude at 1000 hPa
+      
+        Returns
+        -------
+        reference z0 and p0 in m and Pa respectively.
+
+        """
+        
+        var          = "geopotential"
+        ERA_z0       = ERA5p(self.t_0, self.t_1, var, domain = self.domain)
+        
+        grid_z0      = np.squeeze(ERA_z0.interpolate(self.dardar, p_grid = [1000.0]), axis = 1)
+
+        p0           = np.ones(grid_z0.shape) * 1000 * 100 # [Pa] 
+        
+        z0           = (grid_z0 * constants.earth_radius) / (constants.g * constants.earth_radius - grid_z0)
+        
+        return z0, p0    
     
     
     @property    
@@ -312,20 +333,22 @@ class atmdata():
         dimensions [p, lat, lon]
 
         """
-        grid_t      = np.squeeze(self.temperature)
-        h2o         = np.squeeze(self.vmr_h2o)
+        grid_t      = np.squeeze(self.temperature, axis = 2)
+        h2o         = np.squeeze(self.vmr_h2o, axis = (0, 3))
         grid_z      = grid_t.copy()
         lat         = self.lat
-        p0          = np.squeeze(self.p_surface)
- #       z0          = np.squeeze(self.z_surface)
-
-        z0          = np.squeeze(self.orography)
+        
+        z0, p0      = self.z0_p0
+        
+     
+        
         for i in range(grid_t.shape[1]):
             grid_z[:, i]      = (pt2z(self.p_grid, grid_t[:, i], 
                                       h2o[:, i], p0[i], z0[i], lat[i]))
         grid_z      = np.expand_dims(grid_z, 2) 
         
         return grid_z
+    
     
     @property
     def skin_temperature(self):
@@ -536,8 +559,11 @@ class atmdata():
         
         p               = self.p_grid   
         
-        iwc             = self.dardar.iwc
-        height_d        = self.dardar.height
+        try:
+            iwc             = self.dardar.iwc
+            height_d        = self.dardar.height
+        except:
+            print ("iwc and height not available as class methods/property")
         p_grid_d        = alt2pres(height_d)
         f               = (interpolate.interp1d(np.log(p_grid_d), iwc, 
                                                 fill_value = "extrapolate"))
@@ -559,8 +585,11 @@ class atmdata():
         
         p               = self.p_grid   
         
-        N0star          = self.dardar.N0star
-        height_d        = self.dardar.height
+        try:
+            N0star          = self.dardar.N0star
+            height_d        = self.dardar.height
+        except:
+            print ("N0Star not available as class method/property")
         p_grid_d        = alt2pres(height_d)
         f               = (interpolate.interp1d(np.log(p_grid_d), N0star, 
                                                 fill_value = "extrapolate"))
@@ -583,9 +612,12 @@ class atmdata():
         
         p               = self.p_grid   
         
-        Z               = self.dardar.Z
-        
-        height_d        = self.dardar.height
+        try:
+            Z               = self.dardar.Z
+            
+            height_d        = self.dardar.height
+        except:
+            print ("reflectivities not available as class property")
         p_grid_d        = alt2pres(height_d)
         f               = (interpolate.interp1d(np.log(p_grid_d), Z,
                                                fill_value = "extrapolate"))

@@ -63,15 +63,15 @@ def dardar2atmdata(dardar, p_grid, domain = None):
                         "t2m"             : atm.t2m,
                         "wind_speed"      : atm.wind_speed,
                         "wind_direction"  : atm.wind_direction,
-#                        "iwc"             : atm.iwc,
+                        "iwc"             : atm.iwc,
                         "z_surface"       : atm.z_surface,
                         "abs_species"     : atm.abs_species,                   
                         "vmr_field"       : vmr_field, 
                         "lsm"             : atm.lsm,
                         "sea_ice_cover"   : atm.sea_ice_cover,
                         "snow_depth"      : atm.snow_depth,
-                        "reflectivities"  : atm.Z,
-#                        "N0star"          : atm.N0star,
+#                        "reflectivities"  : atm.Z,
+                        "N0star"          : atm.N0star,
                         }
 # save  atm_fields to xml files   
     

@@ -50,8 +50,10 @@ class ERA5():
         
         
         self.longname  = parameter
-        self.shortname = parameters[parameter]       
-        
+        self.shortname = parameters[parameter]  
+        self.t_0 = t_0
+        self.t_1 = t_1
+
 
         
 class ERA5p(ERA5):
@@ -61,24 +63,33 @@ class ERA5p(ERA5):
     """
     
     def __init__(self, t_0, t_1, parameter, domain = None):
+        
         super().__init__(t_0, t_1, parameter, domain = None)
-        
-#       create ERA5product instance
-        data = ERA5Hourly('pressure', [parameter], domain = domain)
+
+        self.domain = domain
+
+        #       create ERA5product instance
+        data = ERA5Hourly('pressure', [self.longname], domain = self.domain)
   
-#       download data with matching time stamp
-        file = data.download(t_0, t_1)
+        #       download data with matching time stamp
+        file = data.download(self.t_0, self.t_1)
         
-#       load ERA5 data into an xarray           
+        #       load ERA5 data into an xarray           
         self.era = data.open(filename = file[0])        
 
-#       flip latitude to be in ascending order        
+        #       flip latitude to be in ascending order        
         self.era = self.era.sortby('latitude' , ascending = True) 
         
-#   if on pressure levels, read in levels and        
-#   add extra pressure level in ERA5 data
+        #   if on pressure levels, read in levels and        
+        #   add extra pressure level in ERA5 data
         xlevel = 1150 # hPa
         self.add_extra_level(xlevel)
+        
+
+    
+    def __del__(self):
+        
+        self.era.close()
         
         
     def add_extra_level(self,  xlevel):
@@ -142,13 +153,13 @@ class ERA5p(ERA5):
 
         return lon, A     
        
-    def interpolate(self, dardar, p_grid = None, method = "linear"):
+    def interpolate(self, other, p_grid = None, method = "linear"):
         """
         
 
         Parameters
         ----------
-        dardar : Instance of DARDAR class
+        other : Instance of DARDAR/locations class
         p_grid : if defined, pressure grid for interpolation (hPa) is used
                  otherwise, DARDAR vertical locations are used.
  
@@ -158,34 +169,30 @@ class ERA5p(ERA5):
         grid_t : np.array of gridded ERA5 data on DARDAR grid
 
         """
-#   get DARDAR locations       
-        lon_d       = dardar.longitude
-        lat_d       = dardar.latitude
+        #   get DARDAR locations       
+        lon_d       = other.longitude
+        lat_d       = other.latitude
         
-        
-#   convert longitude from -180 -- 180 to 0--360, if required
-         
-#        if lon_d.min()  < 0:
-#              lon_d = lon_d % 360
+
 
         
         level   = self.era['level'].data 
         level   = np.log(level)  # convert pressure to log            
             
-#   get ERA lat/lon/pressure grids and corresponding field    
+        #   get ERA lat/lon/pressure grids and corresponding field    
         lat     = self.era['latitude'].data
         lon     = self.era['longitude'].data     
         field   = self.era[self.shortname].data[0] # 0 for time dimension 
 
-#   add one extra dimension to longitude to wrap around during interpolation
+        #   add one extra dimension to longitude to wrap around during interpolation
         if lon.min() == -180.0:
             lon, field = self.expand_lon(lon, field)      
         
-#convert to 0 to 360, this is needed when global data is downloaded, domain = None
+        #convert to 0 to 360, this is needed when global data is downloaded, domain = None
         if lon.max() > 180.5:
             lon_d  = lon_d % 360.0
             
-#interpolate ERA5 to DARDAR lat/lon locations    
+        #interpolate ERA5 to DARDAR lat/lon locations    
  
         if p_grid is not None: # if a new p_grid is required           
             p = np.log(p_grid) # convert pressure to log range
@@ -215,28 +222,28 @@ class ERA5s(ERA5):
         
         super().__init__(t_0, t_1, parameter, domain = None)
         
-#       create ERA5product instance
-        data = ERA5Hourly('surface', [parameter], domain= domain)
-  
-#       download data with matching time stamp
-        file = data.download(t_0, t_1)
-        
-        # year  = t_0.year
-        # month = f"{t_0.month:02d}"
-        # day   = f"{t_0.day:02d}"
-        # hour  = f"{t_0.hour:02d}"      
+        self.domain = domain
 
-        # file = ([
-        #     "ERA5/reanalysis-era5-single-levels/reanalysis-era5-single-levels_"
-        #     + str(year) + str(month) 
-        #     + str(day) + str(hour) + "_"  + parameter + '.nc'])
+        #       create ERA5product instance
+        data = ERA5Hourly('surface', [self.longname], domain = self.domain)
+  
+        #       download data with matching time stamp
+        file = data.download(self.t_0, self.t_1)
         
-#       load ERA5 data into an xarray           
+         
         self.era = data.open(filename = file[0])        
 
-#       flip latitude to be in ascending order        
-        self.era = self.era.sortby('latitude' , ascending = True)     
+        #       flip latitude to be in ascending order        
+        self.era = self.era.sortby('latitude' , ascending = True)   
         
+        
+        return self
+    
+    def __del__(self):
+        
+        self.era.close()
+
+       
     def expand_lon(self, lon, A):
         """
         Expands longitude of ERA5 by one point to mimic 
@@ -265,40 +272,41 @@ class ERA5s(ERA5):
         return lon, A             
          
         
-    def interpolate(self, dardar, method = "linear"):
+    def interpolate(self, other, method = "linear"):
         """
         
 
         Parameters
         ----------
-        dardar : Instance of DARDAR class
+        other : Instance of DARDAR/locations class
 
         Returns
         -------
         grid_t : np.array of gridded surface ERA5 data on DARDAR grid
         method : "linear", "nearest", default is "linear"
+        
         """
-        lon_d = dardar.longitude
-        lat_d = dardar.latitude
+        lon_d = other.longitude
+        lat_d = other.latitude
         
         
 
             
             
-#   get ERA lat/lon/pressure grids    
+        #   get ERA lat/lon/pressure grids    
         lat     = self.era['latitude'].data
         lon     = self.era['longitude'].data
         
         field   = self.era[self.shortname].data[0] # 0 for time dimension 
         
 
-#   add one extra dimension to longitude to wrap around during interpolation  
+        #   add one extra dimension to longitude to wrap around during interpolation  
         if lon.min() == -180.0:
 
             lon, field = self.expand_lon(lon, field)        
 
-#   convert longitude from -180 -- 180 to 0--360, if required
-#   in some cases ERA5 longitudes could be 0 to 360 format            
+        #   convert longitude from -180 -- 180 to 0--360, if required
+        #   in some cases ERA5 longitudes could be 0 to 360 format            
         if lon.max() > 180.5:
             lon_d  = lon_d % 360.0
             
