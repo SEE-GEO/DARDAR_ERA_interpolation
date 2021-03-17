@@ -29,8 +29,8 @@ def add2zip(zfile, filename):
     """
 
 
-    if check_in_zip(zfile, os.path.basename(filename)):
-        raise Exception("File already exists, cannot overwrite")
+    # if check_in_zip(zfile, os.path.basename(filename)):
+    #     raise Exception("File already exists, cannot overwrite")
         
     with zipfile.ZipFile(zfile, 'a') as zf:
 
