@@ -6,10 +6,10 @@ Created on Wed Dec  9 15:05:48 2020
 @author: inderpreet
 """
 import numpy as np
-from ellipsoidmodels import ellipsoidmodels
-from ellipsoidradii import ellipsoidradii
+from era2dardar.utils.ellipsoidmodels import ellipsoidmodels
+from era2dardar.utils.ellipsoidradii import ellipsoidradii
 from typhon import constants
-from pos2g import pos2g
+from era2dardar.utils.pos2g import pos2g
 from era2dardar.utils.alt2pressure import alt2pres, pres2alt
 from scipy.interpolate import interp1d
 
@@ -148,7 +148,3 @@ def pt2z(p, t, h2o, p0, z0, lat = 45, z_acc = -1):
             break
         
     return z    
-    
-    
-        
-        
