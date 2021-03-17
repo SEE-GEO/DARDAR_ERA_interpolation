@@ -86,10 +86,6 @@ class ERA5p(ERA5):
         self.add_extra_level(xlevel)
         
 
-    
-    def __del__(self):
-        
-        self.era.close()
         
         
     def add_extra_level(self,  xlevel):
@@ -235,14 +231,8 @@ class ERA5s(ERA5):
 
         #       flip latitude to be in ascending order        
         self.era = self.era.sortby('latitude' , ascending = True)   
-        
-        
-        return self
-    
-    def __del__(self):
-        
-        self.era.close()
 
+    
        
     def expand_lon(self, lon, A):
         """
