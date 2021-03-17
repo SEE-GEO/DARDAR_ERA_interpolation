@@ -34,7 +34,7 @@ from era2dardar.utils.pt2z import pt2z
 class atmdata():
     """
     Class atmdata  which interpolates ERA5 data to DARDAR grids or
-    fot that matter any lat/lon location defined by dardar/locations object
+    for that matter any lat/lon location defined by dardar/locations object
     inputs are dardar/locations class object and the pressure grid over 
     which values are to be interpolated
     The returned outputs for each are in ARTS grid format and 
@@ -195,7 +195,7 @@ class atmdata():
         ERA_o3     = ERA5p(self.t_0, self.t_1, var, domain = self.domain)
         grid_o3    = ERA_o3.interpolate(self.dardar, p * 0.01)
 
-# molecular mass of ozone        
+        # molecular mass of ozone        
         M_w        = 48.0e-3 #[kg/mol]
         
         grid_o3    = mixr2vmr(grid_o3, M_w)
@@ -220,27 +220,28 @@ class atmdata():
         
         return abs_species
 
-    # @property
-    # def z_surface_strm(self):
-    #     """
-    #     z_surface fields interpolated to DARDAR grid.
-    #     The values are interpolated using topography module in typhon
-    #     uses SRTM30 near-global digital elevation model (DEM) 
+    @property
+    def z_surface_srtm(self):
+        """
+        z_surface fields interpolated to DARDAR grid.
+        The values are interpolated using topography module in typhon
+        uses SRTM30 near-global digital elevation model (DEM) 
 
-    #     Returns
-    #     -------
-    #     z_surface : np.array containing the interpolated values
-    #     dimensions [lat, lon]
+        Returns
+        -------
+        z_surface : np.array containing the interpolated values
+        dimensions [lat, lon]
 
-    #     """
+        """
         
-    #     #  z-surface, from typhon.topography
-    #     lat_d         = self.dardar.get_data("latitude")
-    #     lon_d         = self.dardar.get_data("longitude")
-    #     z_surface     = SRTM30.interpolate(lat_d, lon_d)
-    #     z_surface     = np.expand_dims(z_surface, axis = 1)
+        #  z-surface, from typhon.topography
+        lat_d         = self.dardar.get_data("latitude")
+        lon_d         = self.dardar.get_data("longitude")
+        print ("getting SRTM")
+        z_surface     = SRTM30.interpolate(lat_d, lon_d)
+        z_surface     = np.expand_dims(z_surface, axis = 1)
         
-    #     return z_surface
+        return z_surface
     
     @property
     def p_surface(self):
@@ -312,7 +313,7 @@ class atmdata():
         var          = "geopotential"
         ERA_z0       = ERA5p(self.t_0, self.t_1, var, domain = self.domain)
         
-        grid_z0      = np.squeeze(ERA_z0.interpolate(self.dardar, p_grid = [1000.0]), axis = 1)
+        grid_z0      = np.squeeze(ERA_z0.interpolate(self.dardar, p_grid = [1000.0]))
 
         p0           = np.ones(grid_z0.shape) * 1000 * 100 # [Pa] 
         
@@ -498,7 +499,7 @@ class atmdata():
         q2vmr           = thermodynamics.specific_humidity2vmr(grid_q)    
         p_era           = ERA_q.era["level"].data * 100 # Pa
 
-#       interpolate log(vmr) as a function of log(p)     
+        # interpolate log(vmr) as a function of log(p)     
 
         f_q             =  interpolate.interp1d(np.log(p_era), np.log(q2vmr), axis = 0 )
         grid_q2vmr      =  np.exp(f_q(np.log(p)))
@@ -547,8 +548,8 @@ class atmdata():
         return grid_O2
     
         
-    @property
-    def iwc(self):
+#    @property
+    def iwc(self,  z_field = None):
         """
         The IWC data from DARDAR interpolated to pressure grid defined in
         p_grid
@@ -564,11 +565,26 @@ class atmdata():
             height_d        = self.dardar.height
         except:
             print ("iwc and height not available as class methods/property")
-        p_grid_d        = alt2pres(height_d)
-        f               = (interpolate.interp1d(np.log(p_grid_d), iwc, 
-                                                fill_value = "extrapolate"))
-        grid_iwc        = f(np.log(p))
-        grid_iwc        = grid_iwc.T
+            
+        if z_field is not None:
+            print ("file provided")
+        else:    
+            z_field         = np.squeeze(self.z_field)  
+        
+        grid_iwc = np.zeros(z_field.shape)
+        
+        for i in range(self.lat.shape[0]):
+            # first interpolate dardar heights to pressures using z_field and p_grid
+            f                 = interpolate.interp1d(z_field[:, i], np.log(p), fill_value  = "extrapolate")
+            p_d               = f(height_d) # log scale
+            # using dardar pressure levels to interpolate reflectivities to p_grid 
+            f                 = interpolate.interp1d(p_d, iwc[i, :], fill_value = "extrapolate")
+            grid_iwc[:, i]    = f(np.log(p))
+        
+        
+        #grid_iwc        = f(np.log(p))
+        print(grid_iwc.shape)
+        #grid_iwc        = grid_iwc.T
         grid_iwc        = np.expand_dims(grid_iwc, axis = (0, 3))
        
         return grid_iwc       
@@ -590,18 +606,27 @@ class atmdata():
             height_d        = self.dardar.height
         except:
             print ("N0Star not available as class method/property")
-        p_grid_d        = alt2pres(height_d)
-        f               = (interpolate.interp1d(np.log(p_grid_d), N0star, 
-                                                fill_value = "extrapolate"))
-        grid_N0star        = f(np.log(p))
-        grid_N0star        = grid_N0star.T
+            
+        z_field = np.squeeze(self.z_field)  
+        
+        grid_N0star = np.zeros(z_field.shape)
+    
+        for i in range(self.lat.shape[0]):
+            # first interpolate dardar heights to pressures using z_field and p_grid
+            f                 = interpolate.interp1d(z_field[:, i], np.log(p), fill_value  = "extrapolate")
+            p_d               = f(height_d) # log scale
+            # using dardar pressure levels to interpolate reflectivities to p_grid 
+            f                 = interpolate.interp1d(p_d, N0star[i, :], fill_value = "extrapolate")
+            grid_N0star[:, i]    = f(np.log(p))
+            
+        #grid_N0star        = f(np.log(p))
         grid_N0star        = np.expand_dims(grid_N0star, axis = (0, 3))
        
         return grid_N0star       
            
         
-    @property
-    def Z(self):
+    
+    def Z(self, z_field = None):
         """
         The reflectivity data from DARDAR interpolated to pressure grid defined in
         p_grid
@@ -609,20 +634,35 @@ class atmdata():
         grid_N2 : np.array containing the interpolated values in
         dimensions [1, p, lat, lon]
         """ 
-        
+        print ("in Z")
         p               = self.p_grid   
         
         try:
             Z               = self.dardar.Z
-            
+            print (Z.shape)
             height_d        = self.dardar.height
+
         except:
             print ("reflectivities not available as class property")
-        p_grid_d        = alt2pres(height_d)
-        f               = (interpolate.interp1d(np.log(p_grid_d), Z,
-                                               fill_value = "extrapolate"))
-        grid_z          = f(np.log(p))
-        grid_z          = grid_z.T
+        
+
+        if z_field is not None:
+            print ("file provided")
+        else:    
+            z_field         = np.squeeze(self.z_field)  
+            
+        grid_z          = np.zeros(z_field.shape)
+        
+        print (z_field.shape)
+        for i in range(self.lat.shape[0]):
+            # first interpolate dardar heights to pressures using z_field and p_grid
+            f               = interpolate.interp1d(z_field[:, i], np.log(p), fill_value  = "extrapolate")
+            p_d             = f(height_d) # log scale
+            # using dardar pressure levels to interpolate reflectivities to p_grid 
+            f               = interpolate.interp1d(p_d, Z[i, :], fill_value = "extrapolate")
+            grid_z[:, i]    = f(np.log(p))
+    
+        #grid_z          = grid_z
         grid_z          = np.expand_dims(grid_z, axis = (0, 3))
        
         return grid_z   
