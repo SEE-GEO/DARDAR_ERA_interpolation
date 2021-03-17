@@ -31,7 +31,7 @@ class ERA5():
     """
     
     
-    def __init__(self, t_0, t_1,  parameter, domain = None):
+    def __init__(self, t_0, t_1,  variables, domain = None):
         """
         download and read ERA5 data between times t_0 and t_1
 
@@ -43,16 +43,17 @@ class ERA5():
         to be downloaded, see  ERA5_parameters.parameters for listed parameters
         """
         
-        if parameter not in parameters:
-            raise Exception(
-                "parameter currently not listed check spelling or add to parameters dictionary", 
-                            parameters)
-        
-        
-        self.longname  = parameter
-        self.shortname = parameters[parameter]  
-        self.t_0 = t_0
-        self.t_1 = t_1
+        # if parameter not in parameters:
+        #     raise Exception(
+        #         "parameter currently not listed check spelling or add to parameters dictionary", 
+        #                     parameters)
+        self.longname = []
+        self.shortname = []
+        for parameter in variables: 
+            self.longname.append(parameter)
+            self.shortname.append(parameters[parameter])  
+            self.t_0 = t_0
+            self.t_1 = t_1
 
 
         
@@ -62,25 +63,25 @@ class ERA5p(ERA5):
     inherits from class ERA5
     """
     
-    def __init__(self, t_0, t_1, parameter, domain = None):
+    def __init__(self, t_0, t_1, variables, domain = None):
         
-        super().__init__(t_0, t_1, parameter, domain = None)
+        super().__init__(t_0, t_1, variables, domain = None)
 
         self.domain = domain
 
         #       create ERA5product instance
-        data = ERA5Hourly('pressure', [self.longname], domain = self.domain)
+        print (self.longname)
+        data = ERA5Hourly('pressure', self.longname, domain = self.domain)
   
         #       download data with matching time stamp
         file = data.download(self.t_0, self.t_1)
         
         #       load ERA5 data into an xarray           
-        self.era = data.open(filename = file[0])        
+        self.era = data.open(filename = file[0])   
 
         #       flip latitude to be in ascending order        
         self.era = self.era.sortby('latitude' , ascending = True) 
-        
-        #   if on pressure levels, read in levels and        
+             
         #   add extra pressure level in ERA5 data
         xlevel = 1150 # hPa
         self.add_extra_level(xlevel)
@@ -105,22 +106,17 @@ class ERA5p(ERA5):
          -------
          None.
          
-         """         
-             
-         if self.longname == "geopotential":
-          # geopotential                    
-             A          = self.era[self.shortname][:, -1, :, :].to_dataset() # copy lowest pressure level
-             A["level"] = xlevel
-             self.era   = (xarray.concat([self.era, A], dim="level"))
-             
-             # convert pressure to geopotential
-             self.era[self.shortname][0, -1, :, :] = pres2alt(xlevel * 100) * g
+         """     
+         # extract dataset at last pressure level
+         Ex             =  self.era[dict(level = [-1])]
          
-         else:   
-             A          = self.era[self.shortname][:, -1, :, :].to_dataset() # copy lowest pressure level
-             A["level"] = xlevel
-             self.era   = (xarray.concat([self.era, A], dim="level"))
+         # geopotential at 1150 hPa is using simple conversion
+         if "geopotential" in self.longname:
+             Ex["z"]        = pres2alt(xlevel * 100) * g
              
+         Ex["level"]    = np.array([xlevel])
+         self.era   = (xarray.concat([self.era, Ex], dim="level"))        
+         
        
     def expand_lon(self, lon, A):
         """
@@ -149,7 +145,7 @@ class ERA5p(ERA5):
 
         return lon, A     
        
-    def interpolate(self, other, p_grid = None, method = "linear"):
+    def interpolate(self, other, shortname, p_grid = None, method = "linear"):
         """
         
 
@@ -178,7 +174,7 @@ class ERA5p(ERA5):
         #   get ERA lat/lon/pressure grids and corresponding field    
         lat     = self.era['latitude'].data
         lon     = self.era['longitude'].data     
-        field   = self.era[self.shortname].data[0] # 0 for time dimension 
+        field   = self.era[shortname].data[0] # 0 for time dimension 
 
         #   add one extra dimension to longitude to wrap around during interpolation
         if lon.min() == -180.0:
@@ -188,7 +184,7 @@ class ERA5p(ERA5):
         if lon.max() > 180.5:
             lon_d  = lon_d % 360.0
             
-        #interpolate ERA5 to DARDAR lat/lon locations    
+        #interpolate ERA5 to DARDAR lat/lon locations 
  
         if p_grid is not None: # if a new p_grid is required           
             p = np.log(p_grid) # convert pressure to log range
@@ -220,16 +216,16 @@ class ERA5s(ERA5):
         
         self.domain = domain
 
-        #       create ERA5product instance
-        data = ERA5Hourly('surface', [self.longname], domain = self.domain)
+        #  create ERA5product instance
+        data = ERA5Hourly('surface', self.longname, domain = self.domain)
   
-        #       download data with matching time stamp
+        # download data with matching time stamp
         file = data.download(self.t_0, self.t_1)
         
          
         self.era = data.open(filename = file[0])        
 
-        #       flip latitude to be in ascending order        
+        #  flip latitude to be in ascending order        
         self.era = self.era.sortby('latitude' , ascending = True)   
 
     
@@ -262,7 +258,7 @@ class ERA5s(ERA5):
         return lon, A             
          
         
-    def interpolate(self, other, method = "linear"):
+    def interpolate(self,  other, shortname, method = "linear"):
         """
         
 
@@ -287,7 +283,7 @@ class ERA5s(ERA5):
         lat     = self.era['latitude'].data
         lon     = self.era['longitude'].data
         
-        field   = self.era[self.shortname].data[0] # 0 for time dimension 
+        field   = self.era[shortname].data[0] # 0 for time dimension 
         
 
         #   add one extra dimension to longitude to wrap around during interpolation  
