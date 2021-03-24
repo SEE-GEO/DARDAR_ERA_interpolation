@@ -146,8 +146,9 @@ if __name__ == "__main__":
     
     
     # pressure grid    
-    p_grid = alt2pres(np.arange(-700, 20000, 250))
-    p_grid = (np.concatenate([p_grid, 
+    p_grid_fine = alt2pres(np.arange(-700, 8000, 125))
+    p_grid_coarse = alt2pres(np.arange(8000, 20000, 250))
+    p_grid = (np.concatenate([p_grid_fine, p_grid_coarse,
                              np.array([30, 20, 10, 7, 5, 3, 2, 1]) * 100]))
     
     # latitudinal extent
