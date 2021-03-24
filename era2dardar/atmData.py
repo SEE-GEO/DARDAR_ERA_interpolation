@@ -3,7 +3,7 @@
 """
 Created on Wed Dec 16 09:18:07 2020
 
-class to convert ERA5 data to DARDAR grid
+class to convert ERA5 data to DARDAR/Cloudsat grid
 
 Many atm field are provided as properties, 
 however any pressure or single level variable could be
@@ -34,7 +34,7 @@ from era2dardar.ERA5_parameters import parameters
 
 class atmdata():
     """
-    Class atmdata  which interpolates ERA5 data to DARDAR grids or
+    Class atmdata  which interpolates ERA5 data to DARDAR/Cloudsat  grids or
     for that matter any lat/lon location defined by dardar/locations object
     inputs are dardar/locations class object and the pressure grid over 
     which values are to be interpolated
@@ -43,13 +43,14 @@ class atmdata():
     """
     
 
-    def __init__(self, dardar, erap, eras, p_grid = None, domain  = None):
+    def __init__(self, dardar, cloudsat, erap, eras, p_grid = None, domain  = None):
         """
         
         Parameters
         ----------
-        dardar : a DARDAR class instance or locations class instance which describes
-        custom lat/lon locations
+        dardar : a DARDAR class instance or locations class instance 
+        which describes custom lat/lon locations
+        cloudsat: a CLOUDSAT class instance
         erap   : a ERAp class instance
         eras   : a ERAs class instance
         p_grid : np.array, the pressure grid over which ERA5 
@@ -62,10 +63,11 @@ class atmdata():
 
         """        
 
-        self.dardar  = dardar
+        self.dardar   = dardar
+        self.cloudsat = cloudsat
         self.erap     = erap
         self.eras     = eras
-        self.p_grid  = p_grid
+        self.p_grid   = p_grid
 
         self.domain  = domain
  
@@ -604,12 +606,12 @@ class atmdata():
            
         
     
-    def Z(self, z_field = None):
+    def Z_dardar(self, z_field = None):
         """
         The reflectivity data from DARDAR interpolated to pressure grid defined in
         p_grid
         -------
-        grid_N2 : np.array containing the interpolated values in
+        grid_z : np.array containing the interpolated values in
         dimensions [1, p, lat, lon]
         """ 
         p               = self.p_grid   
@@ -640,7 +642,46 @@ class atmdata():
         grid_z          = np.expand_dims(grid_z, axis = (0, 3))
        
         return grid_z   
+
+    def Z(self, z_field = None):
+        """
+        The reflectivity data from L2BGEOPROF radar reflectivities
+        interpolated to pressure grid defined in
+        p_grid
+        -------
+        grid_z : np.array containing the interpolated values in
+        dimensions [1, p, lat, lon]
+        """ 
+        p                   = self.p_grid   
+        
+        try:
+            Z               = self.cloudsat.Z
+            height_d        = self.cloudsat.height
+
+        except:
+            print ("reflectivities not available as class property")
+        
+
+        if z_field is not None:
+            print ("file provided")
+        else:    
+            z_field         = np.squeeze(self.z_field)  
+            
+        grid_z          = np.zeros(z_field.shape)
+
+        for i in range(self.lat.shape[0]):
+            # first interpolate dardar heights to pressures using z_field and p_grid
+            f               = interpolate.interp1d(z_field[:, i], np.log(p), fill_value  = "extrapolate")
+            p_d             = f(height_d[i]) # log scale
+            # using dardar pressure levels to interpolate reflectivities to p_grid 
+            f               = interpolate.interp1d(p_d, Z[i, :], fill_value = "extrapolate")
+            grid_z[:, i]    = f(np.log(p))
     
+        zlim            = 10 ** (-99/10) # fillvalue equivalent to -99 dbZ
+        grid_z          = np.where(np.isnan(grid_z), zlim, grid_z)
+        grid_z          = np.expand_dims(grid_z, axis = (0, 3))
+       
+        return grid_z       
     
     def variable_plevel(self, variable, method = "linear"):
         """
@@ -749,8 +790,9 @@ class atmdata():
         grid_sd      = np.expand_dims(grid_sd, axis = 1)
         
         return grid_sd   
+  
 
-            
+
 
         
         
