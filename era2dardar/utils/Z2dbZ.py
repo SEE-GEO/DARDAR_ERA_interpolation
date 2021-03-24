@@ -21,3 +21,20 @@ def Z2dbZ(Z):
     """
     
     return 10 * np.log10(Z)
+
+
+def dbZ2Z(dbZ):
+    """
+    convert dBZ to Z
+
+    Parameters
+    ----------
+    dbZ : np.array, reflectivities [dbZ]
+
+    Returns
+    -------
+    Z : np.array, reflectivities [mm6 m-3]
+    """
+    
+    
+    return 10 ** (dbZ/10)

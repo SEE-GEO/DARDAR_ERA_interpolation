@@ -9,14 +9,14 @@ Created on Thu Dec 17 14:18:24 2020
 import os
 import numpy as np
 from era2dardar.DARDAR import DARDARProduct
-from era2dardar.atmData_all import atmdata
+from era2dardar.atmData import atmdata
 from era2dardar.utils.alt2pressure import alt2pres
 import typhon.arts.xml as xml
 from era2dardar.utils.Z2dbZ import Z2dbZ
 
 
 
-def dardar2atmdata(dardar, erap, eras, p_grid, domain = None):
+def dardar2atmdata(dardar, cloudsat, erap, eras, p_grid, domain = None):
     """
     This method interpolates different fields to DARDAR grid and saves them
     to be in ARTS xml format.
