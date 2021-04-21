@@ -300,6 +300,21 @@ class DARDAR(radarlidar):
         """
         Z = self.get_data("Z")
         return Z 
+    
+    @property  
+    def iwc(self):
+        """
+        gets IWC values for DARDAR pass
+
+        Returns
+        -------
+        iwc : np.array containing ice water content []
+
+        """
+        
+        iwc = self.get_data("iwc")
+        return iwc
+        
 
     @property    
     def N0star(self):
