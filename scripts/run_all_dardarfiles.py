@@ -21,7 +21,6 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import shutil
-import datetime.datetime as datetime
 from era2dardar.utils.match_dardar_cloudsat import match_dardar_cloudsat
 
 
@@ -101,6 +100,7 @@ def run_all_cases(p_grid, dardarfiles, cfiles, Nodes, latlims, inpath, outpath, 
       
             # save xml files  to a zipped folder        
             for key in atm_fields.keys():
+                 print(key)
                 
                  filename = os.path.join(outdir,   key + ".xml")
                 
@@ -157,13 +157,16 @@ if __name__ == "__main__":
     # year and month of data
     year = "2010"
     month = "01"
-    day = "27"
+    day = "01"
     
     # add all eligible files to dardarfiles
     inpath = os.path.join(os.path.expanduser("~/Dendrite/SatData/DARDAR"), year, month)
-    cpath  = os.path.expanduser("~/Dendrite/SatData/DARDAR/Cloudsat/2B-GEOPROF.R05")
+    cpath  = os.path.expanduser("~/Dendrite/SatData/CloudSat/2B-GEOPROF.R05")
     dardarfiles = glob.glob(os.path.join(inpath, "*", "*.hdf"))
     
+    # find matching dardar and 2bgeoprof pairs
+    
+    random.shuffle(dardarfiles)
     dardarfiles, cfiles = match_dardar_cloudsat(dardarfiles, cpath)
  
     #inpath = os.path.join(os.path.expanduser("~/Dendrite/SatData/DARDAR"), year)
@@ -172,11 +175,9 @@ if __name__ == "__main__":
     #inpath = os.path.join(os.path.expanduser("~/Dendrite/SatData/DARDAR"), year, month, day)
     #dardarfiles = [os.path.join(inpath , "DARDAR-CLOUD_v2.1.1_2010027071721_19950.hdf")]
     
-    outpath = os.path.expanduser("~/Dendrite/Projects/IWP/GMI/DARDAR_ERA_m65_p65_z_field")
+    outpath = os.path.expanduser("~/Dendrite/Projects/IWP/GMI/DARDAR_ERA_m65_p65")
     
     Nodes =  [ "A", "D_S", "D_N",  ]
-    # random shuffle dardarfiles
-    random.shuffle(dardarfiles)
     
     # start the loop for all cases
     
