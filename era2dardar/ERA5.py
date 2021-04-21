@@ -39,7 +39,7 @@ class ERA5():
         ----------
         t_0 : datetime.datetime object, start time
         t_1 : datetime.datetime object, end time
-        parameter : string containing the longname of ERA5 field 
+        variables : list containing the longnames of ERA5 fields 
         to be downloaded, see  ERA5_parameters.parameters for listed parameters
         """
         
@@ -69,20 +69,19 @@ class ERA5p(ERA5):
 
         self.domain = domain
 
-        #       create ERA5product instance
-        print (self.longname)
+        # create ERA5product instance
         data = ERA5Hourly('pressure', self.longname, domain = self.domain)
   
-        #       download data with matching time stamp
+        # download data with matching time stamp
         file = data.download(self.t_0, self.t_1)
         
-        #       load ERA5 data into an xarray           
+        # load ERA5 data into an xarray           
         self.era = data.open(filename = file[0])   
 
-        #       flip latitude to be in ascending order        
+        # flip latitude to be in ascending order        
         self.era = self.era.sortby('latitude' , ascending = True) 
              
-        #   add extra pressure level in ERA5 data
+        # add extra pressure level in ERA5 data
         xlevel = 1150 # hPa
         self.add_extra_level(xlevel)
         
@@ -288,7 +287,6 @@ class ERA5s(ERA5):
 
         #   add one extra dimension to longitude to wrap around during interpolation  
         if lon.min() == -180.0:
-
             lon, field = self.expand_lon(lon, field)        
 
         #   convert longitude from -180 -- 180 to 0--360, if required
