@@ -43,14 +43,13 @@ class atmdata():
     """
     
 
-    def __init__(self, dardar, cloudsat, erap, eras, p_grid = None, domain  = None):
+    def __init__(self, dardar, erap, eras, p_grid = None, domain  = None):
         """
         
         Parameters
         ----------
         dardar : a DARDAR class instance or locations class instance 
         which describes custom lat/lon locations
-        cloudsat: a CLOUDSAT class instance
         erap   : a ERAp class instance
         eras   : a ERAs class instance
         p_grid : np.array, the pressure grid over which ERA5 
@@ -64,7 +63,7 @@ class atmdata():
         """        
 
         self.dardar   = dardar
-        self.cloudsat = cloudsat
+        #self.cloudsat = cloudsat
         self.erap     = erap
         self.eras     = eras
         self.p_grid   = p_grid
@@ -606,7 +605,7 @@ class atmdata():
            
         
     
-    def Z_dardar(self, z_field = None):
+    def Z(self, z_field = None):
         """
         The reflectivity data from DARDAR interpolated to pressure grid defined in
         p_grid
@@ -643,45 +642,47 @@ class atmdata():
        
         return grid_z   
 
-    def Z(self, z_field = None):
-        """
-        The reflectivity data from L2BGEOPROF radar reflectivities
-        interpolated to pressure grid defined in
-        p_grid
-        -------
-        grid_z : np.array containing the interpolated values in
-        dimensions [1, p, lat, lon]
-        """ 
-        p                   = self.p_grid   
+    # def Z(self, z_field = None):
+    #     """
+    #     The reflectivity data from L2BGEOPROF radar reflectivities
+    #     interpolated to pressure grid defined in
+    #     p_grid
+    #     -------
+    #     grid_z : np.array containing the interpolated values in
+    #     dimensions [1, p, lat, lon]
+    #     """ 
+    #     p                   = self.p_grid   
         
-        try:
-            Z               = self.cloudsat.Z
-            height_d        = self.cloudsat.height
-
-        except:
-            print ("reflectivities not available as class property")
-        
-
-        if z_field is not None:
-            print ("file provided")
-        else:    
-            z_field         = np.squeeze(self.z_field)  
+    #     try:
+    #         Z               = self.cloudsat.Z
+    #         height_d        = self.cloudsat.height
             
-        grid_z          = np.zeros(z_field.shape)
+    #         #print (height_d.shape(), Z.shape(), self.lat.shape())
 
-        for i in range(self.lat.shape[0]):
-            # first interpolate dardar heights to pressures using z_field and p_grid
-            f               = interpolate.interp1d(z_field[:, i], np.log(p), fill_value  = "extrapolate")
-            p_d             = f(height_d[i]) # log scale
-            # using dardar pressure levels to interpolate reflectivities to p_grid 
-            f               = interpolate.interp1d(p_d, Z[i, :], fill_value = "extrapolate")
-            grid_z[:, i]    = f(np.log(p))
+    #     except:
+    #         print ("reflectivities not available as class property")
+        
+
+    #     if z_field is not None:
+    #         print ("file provided")
+    #     else:    
+    #         z_field         = np.squeeze(self.z_field)  
+            
+    #     grid_z          = np.zeros(z_field.shape)
+
+    #     for i in range(self.lat.shape[0]):
+    #         # first interpolate dardar heights to pressures using z_field and p_grid
+    #         f               = interpolate.interp1d(z_field[:, i], np.log(p), fill_value  = "extrapolate")
+    #         p_d             = f(height_d[i]) # log scale
+    #         # using dardar pressure levels to interpolate reflectivities to p_grid 
+    #         f               = interpolate.interp1d(p_d, Z[i, :], fill_value = "extrapolate")
+    #         grid_z[:, i]    = f(np.log(p))
     
-        zlim            = 10 ** (-99/10) # fillvalue equivalent to -99 dbZ
-        grid_z          = np.where(np.isnan(grid_z), zlim, grid_z)
-        grid_z          = np.expand_dims(grid_z, axis = (0, 3))
+    #     zlim            = 10 ** (-99/10) # fillvalue equivalent to -99 dbZ
+    #     grid_z          = np.where(np.isnan(grid_z), zlim, grid_z)
+    #     grid_z          = np.expand_dims(grid_z, axis = (0, 3))
        
-        return grid_z       
+    #     return grid_z       
     
     def variable_plevel(self, variable, method = "linear"):
         """
@@ -791,6 +792,57 @@ class atmdata():
         
         return grid_sd   
   
+
+
+class Z2atmdata():
+    
+    def __init__(self, cloudsat, p_grid, z_field):
+        
+        self.cloudsat = cloudsat
+        self.z_field  = z_field
+        self.p_grid   = p_grid
+        self.lat      = cloudsat.latitude
+        
+    @property    
+    def Z(self):
+        """
+        The reflectivity data from L2BGEOPROF radar reflectivities
+        interpolated to pressure grid defined in
+        p_grid
+        -------
+        grid_z : np.array containing the interpolated values in
+        dimensions [1, p, lat, lon]
+        """ 
+        p                   = self.p_grid   
+        
+        try:
+            Z               = self.cloudsat.Z
+            height_d        = self.cloudsat.height
+            
+            #print (height_d.shape(), Z.shape(), self.lat.shape())
+
+        except:
+            print ("reflectivities not available as class property")
+        
+   
+        z_field         = np.squeeze(self.z_field)  
+            
+        grid_z          = np.zeros(z_field.shape)
+
+        for i in range(self.lat.shape[0]):
+            # first interpolate dardar heights to pressures using z_field and p_grid
+            f               = interpolate.interp1d(z_field[:, i], np.log(p), fill_value  = "extrapolate")
+            p_d             = f(height_d[i]) # log scale
+            # using dardar pressure levels to interpolate reflectivities to p_grid 
+            f               = interpolate.interp1d(p_d, Z[i, :], fill_value = "extrapolate")
+            grid_z[:, i]    = f(np.log(p))
+    
+        zlim            = 10 ** (-99/10) # fillvalue equivalent to -99 dbZ
+        grid_z          = np.where(np.isnan(grid_z), zlim, grid_z)
+        grid_z          = np.expand_dims(grid_z, axis = (0, 3))
+       
+        return grid_z      
+
 
 
 
