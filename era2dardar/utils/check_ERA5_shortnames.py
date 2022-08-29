@@ -33,7 +33,7 @@ def  check_ERA5p_shortnames(parameter):
         
   
 #       download data with matching time stamp
-    t_0 = datetime(2019, 1, 1, 1)
+    t_0 = datetime(2009, 12, 11, 1)
     t_1 = t_0 + timedelta(minutes = 30)
     file = data.download(t_0, t_1)
     era = data.open(filename = file[0])   

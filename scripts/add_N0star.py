@@ -26,6 +26,7 @@ import zipfile
 from era2dardar.utils.add2zip import add2zip, check_in_zip
 
 
+
 def filename2date(filename):
         filename = os.path.basename(filename)
         filename = filename.split("_")[2]
@@ -93,9 +94,9 @@ def run_all_N0star(p_grid, zipfiles, latlims, zippath):
 
             
 # check if file already exists
-            if check_in_zip(zfile, "N0star.xml"):
-                print ("N0star already exists in the zipfile")
-                continue
+            # if check_in_zip(zfile, "N0star.xml"):
+            #     print ("N0star already exists in the zipfile")
+            #     continue
             
 
             dardar = DARDARProduct(dardarfile, latlims = latlims, node = N)
@@ -141,7 +142,7 @@ def run_all_N0star(p_grid, zipfiles, latlims, zippath):
             hour  = date.strftime("%H")
             
             
-            N0star_path  = os.path.join(zippath, year + jday + hour)
+            N0star_path  = os.path.join(zippath, year + jday + hour + N)
             
             if not os.path.isdir(N0star_path):
                 os.makedirs(N0star_path)
@@ -190,8 +191,11 @@ if __name__ == "__main__":
     zipfiles = glob.glob(os.path.join(zippath, "*.zip"))
     
     
-    run_all_N0star(p_grid, zipfiles[:150], latlims,  zippath)
+    run_all_N0star(p_grid, zipfiles[:10], latlims,  zippath)
     
+    
+    
+
     
         
     #------------------------------------to check data----------------------------    

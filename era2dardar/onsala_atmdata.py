@@ -16,11 +16,11 @@ from era2dardar.utils.Z2dbZ import Z2dbZ
 
 
 
-def onsala_atmdata(onsala, p_grid, domain = None):
+def onsala_atmdata(onsala, era5p, p_grid, domain = None):
     """
     This method interpolates different fields of ERA5 for Onsala and saves them
     to be in ARTS xml format.
-    
+
     the corresponding ERA5 data is selected, downloaded, interpolated
 
     Parameters
@@ -34,31 +34,31 @@ def onsala_atmdata(onsala, p_grid, domain = None):
     None.
 
     """
-
-    atm             = atmdata(onsala, p_grid, domain = domain)
+    era5s = None
+    atm             = atmdata(onsala, era5p, era5s, p_grid, domain = domain)
     vmr_h2o         = atm.vmr_h2o
     vmr_N2          = atm.vmr_N2
     vmr_O2          = atm.vmr_O2
     vmr_O3          = atm.vmr_O3
-    
+
 
     time            = atm.t_0.strftime("%Y%m%d%H%M")
 
-    
+
     lwc             = atm.clwc
 
 
-    
-    
-    vmr_field       = np.concatenate([vmr_N2,vmr_O2,
-                              vmr_h2o, vmr_O3, lwc], axis = 0)   
-    
-    print (atm.abs_species)
-    
 
-# atm_fields as a dictionary    
+
+    vmr_field       = np.concatenate([vmr_N2,vmr_O2,
+                              vmr_h2o, vmr_O3, lwc], axis = 0)
+
+    print (atm.abs_species)
+
+
+# atm_fields as a dictionary
     atm_fields      = {
-                        "time"            : time,  
+                        "time"            : time,
                         # "lon_grid"        : atm.lon,
                         # "lat_grid"        : atm.lat,
                         "p_grid"          : atm.p_grid,
@@ -71,8 +71,8 @@ def onsala_atmdata(onsala, p_grid, domain = None):
                         #"wind_direction"  : atm.wind_direction,
                         #"iwc"             : atm.iwc,
                         #"z_surface"       : atm.z_surface,
-                        #"abs_species"     : atm.abs_species,                   
-                        "vmr_field"       : vmr_field, 
+                        #"abs_species"     : atm.abs_species,
+                        "vmr_field"       : vmr_field,
                         #"lsm"             : atm.lsm,
                         #"sea_ice_cover"   : atm.sea_ice_cover,
                         #"snow_depth"      : atm.snow_depth,
@@ -80,6 +80,4 @@ def onsala_atmdata(onsala, p_grid, domain = None):
                         #"N0star"          : atm.N0star,
                         }
 
-    return atm_fields     
-        
-    
+    return atm_fields

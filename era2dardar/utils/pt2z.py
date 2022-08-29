@@ -14,12 +14,64 @@ from era2dardar.utils.alt2pressure import alt2pres, pres2alt
 from scipy.interpolate import interp1d
 
 
+def alt2pres(altitude):
+    '''
+    Determine site pressure from altitude.
+    Follows z2p_simple from atmlab
+
+    Parameters
+    ----------
+    altitude : numeric
+        Altitude above sea level. [m]
+
+    Returns
+    -------
+    pressure : numeric
+        Atmospheric pressure. [Pa]
+
+    '''
+
+ #   press = 100 * ((44331.514 - altitude) / 11880.516) ** (1 / 0.1902632)
+    
+    pres = 10. **( 5 - altitude/16e3 )
+
+    return pres
+
+def pres2alt(pressure):
+    '''
+    Determine altitude from site pressure.
+    follows p2z_simple from atmlab
+
+    Parameters
+    ----------
+    pressure : numeric
+        Atmospheric pressure. [Pa]
+
+    Returns
+    -------
+    altitude : numeric
+        Altitude above sea level. [m]
+
+    '''
+
+#    alt = 44331.5 - 4946.62 * pressure ** (0.190263)
+    
+    alt = 16e3 * ( 5 - np.log10(pressure) )
+    
+
+    return alt
+
 
 def shift2refpoint( p, z, p0, z0 ):
     
-    f = interp1d(np.log(p), z, kind = "linear")
+    #f = interp1d(np.log(p), z, kind = "linear")
+    
+    f = interp1d(np.log(p.ravel()), z.ravel(), kind = "linear")    
+        
+    #f = interpn(np.log(p), z, np.log(p0), method = "linear")
     
     z = z - (f(np.log(p0))  - z0 )
+    #z = z - (f  - z0 )
 
     return z
 
@@ -84,8 +136,11 @@ def pt2z(p, t, h2o, p0, z0, lat = 45, z_acc = -1):
     if  len(h2o) != n:                          
             raise ValueError('The length of *h2o* must be 1 or match *p*.')
 
-    if p0 > p[0]  or  p0 < p[-1]:
-      raise ValueError('Reference point (p0) can not be outside range of *p*.')
+    #if p0 > p[0]  or  p0 < p[-1]:
+    # raise ValueError('Reference point (p0) can not be outside range of *p*.')
+      
+    if np.any(p0 > p[0])  or  np.any(p0 < p[-1]):
+      raise ValueError('Reference point (p0) can not be outside range of *p*.')      
                                                                     
 
     
@@ -143,8 +198,8 @@ def pt2z(p, t, h2o, p0, z0, lat = 45, z_acc = -1):
         
           # Match the altitude of the reference point
           z = shift2refpoint( p, z, p0, z0 );
-        
-          if (z_acc >= 0) & (max(abs(z-zold)) < z_acc):
+          if (z_acc >= 0) & (np.max(np.abs(z-zold)) < z_acc):
+
             break
         
     return z    

@@ -15,7 +15,8 @@ def shift_lon(lon):
 
     Parameters
     ----------
-    lon : np.array containing longitude values
+    lon : np.array containing longitude values, if scalar, the same value is 
+    returned
 
     Raises
     ------
@@ -24,27 +25,31 @@ def shift_lon(lon):
 
     Returns
     -------
-    np.array containing longitude values in the range avoiding the discontinuity. 
+    np.array containing longitude values in the range avoiding the 
+    discontinuity. 
 
     """
     
-    if np.any(lon < -180.0) or np.any(lon > 360.0):
-        raise Exception("Longitude values not in valid range")
+    if np.isscalar(lon):
         
-        
+        return lon
     
-    lon_360     = lon_180_to_360(lon)
-    diff_360    = lon_360.max() - lon_360.min()
-    
-    lon_180     = lon_360_to_180(lon)
-    diff_180    = lon_180.max() - lon_180.min()
-
-    if diff_360 > diff_180:
-        
-        return lon_180
     else:
-        return lon_360
+        
+        if np.any(lon < -180.0) or np.any(lon > 360.0):
+            raise Exception("Longitude values not in valid range")
+        
+        lon_360     = lon_180_to_360(lon)
+        diff_360    = lon_360.max() - lon_360.min()
+        
+        lon_180     = lon_360_to_180(lon)
+        diff_180    = lon_180.max() - lon_180.min()
     
+        if diff_360 > diff_180:
+            return lon_180
+        else:
+            return lon_360
+        
     
 
 def lon_180_to_360(lon):

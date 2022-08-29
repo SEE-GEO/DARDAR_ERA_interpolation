@@ -91,7 +91,7 @@ def mixr2vmr( mixr, M_w ):
 
     Returns
     -------
-    vmr : volume mixing ratio [m3/m3]
+    vmr : volume mixing ratio [mol/mol]
 
     """
     
